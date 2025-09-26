@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Source2Social{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1>Source2Social Dashboard</h1>
+    <p>Your GitHub commits automatically turned into engaging social media posts.</p>
+</div>
+
+{% if posts %}
+    <div class="card">
+        <h2>Recent Posts</h2>
+        <p>{{ posts|length }} posts generated from your commits</p>
+    </div>
+
+    {% for post in posts %}
+        <div class="card">
+            <div class="post-meta">
+                <strong>{{ post.repository_name }}</strong> •
+                {{ post.author_name }} •
+                {{ post.timestamp[:16] }} •
+                <span class="status-badge status-{{ post.status }}">{{ post.status }}</span>
+            </div>
+
+            <h3>{{ post.commit_message }}</h3>
+
+            <div class="post-content">
+                {% if post.edited_post %}
+                    {{ post.edited_post }}
+                {% else %}
+                    {{ post.generated_post }}
+                {% endif %}
+            </div>
+
+            <div class="post-meta">
+                <strong>Commit:</strong> {{ post.commit_sha[:8] }}
+                {% if post.files_changed %}
+                    {% set files = post.files_changed | fromjson %}
+                    <br><strong>Files:</strong>
+                    {% if files.added %}Added: {{ files.added|join(', ') }}{% endif %}
+                    {% if files.modified %}{% if files.added %} • {% endif %}Modified: {{ files.modified|join(', ') }}{% endif %}
+                    {% if files.removed %}{% if files.added or files.modified %} • {% endif %}Removed: {{ files.removed|join(', ') }}{% endif %}
+                {% endif %}
+            </div>
+
+            <div class="actions">
+                <a href="/posts/{{ post.id }}/edit" class="btn btn-secondary btn-small">Edit</a>
+
+                {% if post.status != 'posted' %}
+                    <form method="post" action="/posts/{{ post.id }}/publish" style="display: inline;">
+                        <button type="submit" class="btn btn-small"
+                                onclick="return confirm('Are you sure you want to publish this post to Twitter?')">
+                            Publish to Twitter
+                        </button>
+                    </form>
+                {% else %}
+                    <span class="btn btn-secondary btn-small" style="opacity: 0.6; cursor: not-allowed;">
+                        Published on {{ post.posted_at[:16] if post.posted_at else 'Unknown' }}
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+
+{% else %}
+    <div class="card">
+        <h2>No Posts Yet</h2>
+        <p>Your generated posts will appear here when you push commits to repositories with webhooks configured.</p>
+
+        <h3>Getting Started</h3>
+        <ol style="margin-left: 2rem; margin-top: 1rem;">
+            <li>Configure your environment variables (GitHub webhook secret, OpenAI API key, Twitter credentials)</li>
+            <li>Set up a GitHub webhook pointing to: <code>https://your-domain.com/webhook/github</code></li>
+            <li>Make commits to your repository</li>
+            <li>Watch as your commits are automatically transformed into engaging social posts!</li>
+        </ol>
+
+        <h3>Webhook Configuration</h3>
+        <p style="margin-top: 1rem;">Add this URL as a webhook in your GitHub repository settings:</p>
+        <div class="post-content">
+            <code>{{ request.url_root }}webhook/github</code>
+        </div>
+        <p><small>Make sure to set the content type to <code>application/json</code> and select "Push events".</small></p>
+    </div>
+{% endif %}
+
+<div class="card">
+    <h2>Quick Stats</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+        <div style="text-align: center; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
+            <div style="font-size: 2rem; font-weight: bold; color: #1da1f2;">{{ posts|length }}</div>
+            <div style="color: #666;">Total Posts</div>
+        </div>
+        <div style="text-align: center; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
+            <div style="font-size: 2rem; font-weight: bold; color: #28a745;">
+                {{ posts | selectattr('status', 'equalto', 'posted') | list | length }}
+            </div>
+            <div style="color: #666;">Published</div>
+        </div>
+        <div style="text-align: center; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
+            <div style="font-size: 2rem; font-weight: bold; color: #ffc107;">
+                {{ posts | selectattr('status', 'in', ['draft', 'edited']) | list | length }}
+            </div>
+            <div style="color: #666;">Pending</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
