@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify
 from services.coderabbit import generate_coderabbit_report, validate_report_parameters
 from database.db import (
     init_database, save_report_to_db, get_report_by_id, list_reports,
-    get_report_metrics, parse_and_store_metrics
+    get_report_metrics, parse_and_store_metrics, get_db_connection
 )
 
 # Create Blueprint for reports routes
@@ -166,5 +166,70 @@ def get_report_metrics_endpoint(report_id):
 
         return jsonify(metrics)
 
+    except Exception as e:
+        return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
+
+
+@reports_bp.route("/reports/bottom5", methods=["GET"])
+def get_bottom_5_reports():
+    """
+    Get the bottom 5 reports from the database (most recent 5)
+    
+    Returns:
+        JSON response with the 5 most recent reports
+    """
+    try:
+        # Initialize database if not exists
+        init_database()
+        
+        # Get total count first
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM reports")
+        total_count = cursor.fetchone()[0]
+        
+        if total_count == 0:
+            return jsonify({
+                "message": "No reports found in database",
+                "total_count": 0,
+                "reports": []
+            })
+        
+        # Calculate offset to get bottom 5 (most recent)
+        offset = max(0, total_count - 5)
+        
+        # Get the bottom 5 reports ordered by created_at DESC
+        query = """
+            SELECT id, organization, from_date, to_date, status, created_at, error_message
+            FROM reports
+            ORDER BY created_at DESC
+            LIMIT 5 OFFSET ?
+        """
+        
+        cursor.execute(query, (offset,))
+        reports = cursor.fetchall()
+        
+        # Format the results
+        formatted_reports = []
+        for report in reports:
+            formatted_reports.append({
+                "id": report[0],
+                "organization": report[1],
+                "from_date": report[2],
+                "to_date": report[3],
+                "status": report[4],
+                "created_at": report[5],
+                "error_message": report[6]
+            })
+        
+        conn.close()
+        
+        return jsonify({
+            "message": f"Bottom 5 reports (most recent)",
+            "total_count": total_count,
+            "showing": len(formatted_reports),
+            "reports": formatted_reports
+        })
+        
     except Exception as e:
         return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
