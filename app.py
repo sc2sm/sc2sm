@@ -12,7 +12,11 @@ from typing import Optional, Dict, List
 from dataclasses import dataclass
 
 import requests
-import tweepy
+try:
+    import tweepy
+except ImportError as e:
+    print(f"Warning: tweepy not available: {e}")
+    tweepy = None
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash
 import json as json_module
 from dotenv import load_dotenv
@@ -25,6 +29,10 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret-key")
+
+# Import and register Blueprints
+from routes.reports import reports_bp
+app.register_blueprint(reports_bp)
 
 # Add custom Jinja2 filter
 @app.template_filter('fromjson')
@@ -252,7 +260,7 @@ Generate a single social media post (STRICT LIMIT: exactly 250 characters maximu
 
 class TwitterPoster:
     def __init__(self):
-        if all([TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET]):
+        if tweepy and all([TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET]):
             self.client = tweepy.Client(
                 consumer_key=TWITTER_API_KEY,
                 consumer_secret=TWITTER_API_SECRET,

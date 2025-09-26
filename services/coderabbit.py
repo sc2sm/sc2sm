@@ -23,6 +23,15 @@ CODERABBIT_API_KEY: Optional[str] = os.getenv("CODERABBIT_API_KEY")
 CODERABBIT_API_BASE: str = "https://api.coderabbit.ai/api/v1"
 
 
+def _load_default_prompt() -> str:
+    """Load the default prompt from crprompt.md"""
+    try:
+        with open('crprompt.md', 'r') as f:
+            return f.read()
+    except FileNotFoundError:
+        logger.warning("crprompt.md not found, using empty default prompt")
+        return ""
+
 def generate_coderabbit_report(from_date: str, to_date: str, **kwargs: Any) -> Dict[str, Any]:
     """
     Generate a CodeRabbit report with the specified parameters.
@@ -66,6 +75,12 @@ def generate_coderabbit_report(from_date: str, to_date: str, **kwargs: Any) -> D
         "to": to_date
     }
 
+    # Add default prompt if no custom prompt is provided
+    if "prompt" not in kwargs or kwargs["prompt"] is None:
+        default_prompt = _load_default_prompt()
+        if default_prompt:
+            payload["prompt"] = default_prompt
+
     # Add optional parameters if provided
     optional_params = [
         "scheduleRange", "prompt", "promptTemplate", "parameters",
@@ -85,7 +100,7 @@ def generate_coderabbit_report(from_date: str, to_date: str, **kwargs: Any) -> D
             f"{CODERABBIT_API_BASE}/report.generate",
             json=payload,
             headers=headers,
-            timeout=30
+            timeout=120
         )
 
         logger.info(f"Response status code: {response.status_code}")
