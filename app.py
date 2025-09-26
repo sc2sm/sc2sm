@@ -504,6 +504,11 @@ def github_webhook():
     return jsonify({"message": f"Processed {len(commits)} commits"}), 200
 
 @app.route("/")
+def landing():
+    """Landing page"""
+    return render_template("landing.html")
+
+@app.route("/dashboard")
 def dashboard():
     """Main dashboard showing recent posts"""
     posts = db.get_posts()
