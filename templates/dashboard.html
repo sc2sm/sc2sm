@@ -3,26 +3,6 @@
 {% block title %}Dashboard - Source2Social{% endblock %}
 
 {% block content %}
-<div class="card">
-    <h1>Source2Social Dashboard</h1>
-    <p>Your GitHub commits automatically turned into engaging social media posts.</p>
-    
-    <!-- OAuth Connection Status -->
-    <div style="margin-top: 1rem; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
-        <h3 style="margin-top: 0;">X (Twitter) Connection</h3>
-        <div id="oauth-status">
-            <p>Checking connection status...</p>
-        </div>
-        <div id="oauth-actions" style="margin-top: 0.5rem;">
-            <a href="/oauth/x/authorize" class="btn btn-primary" id="connect-btn" style="display: none;">
-                Connect X Account
-            </a>
-            <a href="/oauth/x/disconnect" class="btn btn-secondary" id="disconnect-btn" style="display: none;">
-                Disconnect X Account
-            </a>
-        </div>
-    </div>
-</div>
 
 {% if posts %}
     <div class="card">
@@ -64,12 +44,10 @@
                 <a href="/posts/{{ post.id }}/edit" class="btn btn-secondary btn-small">Edit</a>
 
                 {% if post.status != 'posted' %}
-                    <form method="post" action="/posts/{{ post.id }}/publish" style="display: inline;">
-                        <button type="submit" class="btn btn-small"
-                                onclick="return confirm('Are you sure you want to publish this post to Twitter?')">
-                            Publish to Twitter
-                        </button>
-                    </form>
+                    <button type="button" class="btn btn-small" onclick="publishToX({{ post.id }}, this)">
+                        <span style="margin-right: 0.25rem;">𝕏</span>
+                        Publish to X
+                    </button>
                 {% else %}
                     <span class="btn btn-secondary btn-small" style="opacity: 0.6; cursor: not-allowed;">
                         Published on {{ post.posted_at[:16] if post.posted_at else 'Unknown' }}
@@ -124,33 +102,52 @@
 </div>
 
 <script>
-// Check OAuth connection status
-fetch('/oauth/x/status')
-    .then(response => response.json())
-    .then(data => {
-        const statusDiv = document.getElementById('oauth-status');
-        const connectBtn = document.getElementById('connect-btn');
-        const disconnectBtn = document.getElementById('disconnect-btn');
-        
-        if (data.connected) {
-            if (data.expired) {
-                statusDiv.innerHTML = '<p style="color: #dc3545;">⚠️ X account connected but token expired. Please reconnect.</p>';
-                connectBtn.style.display = 'inline-block';
-                disconnectBtn.style.display = 'inline-block';
-            } else {
-                statusDiv.innerHTML = '<p style="color: #28a745;">✅ X account connected and active</p>';
-                connectBtn.style.display = 'none';
-                disconnectBtn.style.display = 'inline-block';
+function publishToX(postId, buttonElement) {
+    // Get the post content from the post element
+    const postCard = buttonElement.closest('.card');
+    const postContentDiv = postCard.querySelector('.post-content');
+    const postContent = postContentDiv.textContent.trim();
+
+    // Encode the content for URL
+    const encodedContent = encodeURIComponent(postContent);
+
+    // Create X (Twitter) intent URL
+    const xUrl = `https://twitter.com/intent/tweet?text=${encodedContent}`;
+
+    // Open X in a new tab
+    window.open(xUrl, '_blank');
+
+    // Mark the post as published after a short delay
+    setTimeout(() => {
+        fetch(`/posts/${postId}/mark-published`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
             }
-        } else {
-            statusDiv.innerHTML = '<p style="color: #6c757d;">❌ No X account connected</p>';
-            connectBtn.style.display = 'inline-block';
-            disconnectBtn.style.display = 'none';
-        }
-    })
-    .catch(error => {
-        console.error('Error checking OAuth status:', error);
-        document.getElementById('oauth-status').innerHTML = '<p style="color: #dc3545;">Error checking connection status</p>';
-    });
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update the button to show published status
+                const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
+                buttonElement.outerHTML = `
+                    <span class="btn btn-secondary btn-small" style="opacity: 0.6; cursor: not-allowed;">
+                        Published on ${now}
+                    </span>
+                `;
+
+                // Show success message
+                const statusBadge = postCard.querySelector('.status-badge');
+                if (statusBadge) {
+                    statusBadge.textContent = 'posted';
+                    statusBadge.className = 'status-badge status-posted';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error marking post as published:', error);
+        });
+    }, 2000); // 2 second delay to allow time to actually post
+}
 </script>
 {% endblock %}

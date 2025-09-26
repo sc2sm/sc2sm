@@ -744,10 +744,33 @@ def github_webhook():
     return jsonify({"message": f"Processed {len(commits)} commits"}), 200
 
 @app.route("/")
+def landing():
+    """Landing page"""
+    return render_template("landing.html")
+
+@app.route("/dashboard")
 def dashboard():
     """Main dashboard showing recent posts"""
     posts = db.get_posts()
     return render_template("dashboard.html", posts=posts)
+
+@app.route("/posts")
+def posts_performance():
+    """Posts performance analytics page"""
+    posts = db.get_posts()
+
+    # Calculate stats
+    total_posts = len(posts)
+    published_posts = len([p for p in posts if p['status'] == 'posted'])
+    posts_this_week = len([p for p in posts if p['created_at']])  # Mock for now
+    avg_engagement = 12.5  # Mock data for now
+
+    return render_template("posts.html",
+                         posts=posts,
+                         total_posts=total_posts,
+                         published_posts=published_posts,
+                         posts_this_week=posts_this_week,
+                         avg_engagement=avg_engagement)
 
 @app.route("/posts/<int:post_id>/edit", methods=["GET", "POST"])
 def edit_post(post_id):
@@ -787,6 +810,15 @@ def publish_post(post_id):
         flash("Failed to publish post", "error")
 
     return redirect(url_for("dashboard"))
+
+@app.route("/posts/<int:post_id>/mark-published", methods=["POST"])
+def mark_post_published(post_id):
+    """Mark a post as published via URL sharing"""
+    try:
+        db.mark_posted(post_id, 'x')
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 # Settings routes (from UI branch)
 @app.route("/settings/source")
