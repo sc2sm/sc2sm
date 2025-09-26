@@ -12,7 +12,8 @@
       "Bash(gh:*)",
       "Bash(python:*)",
       "Bash(pip install:*)",
-      "Bash(git checkout:*)"
+      "Bash(PORT=5001 python:*)",
+      "Bash(pkill:*)"
     ],
     "deny": [],
     "ask": []
