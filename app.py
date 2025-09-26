@@ -318,8 +318,8 @@ def github_webhook():
     commits = payload['commits']
 
     for commit in commits:
-        # Skip merge commits
-        if len(commit['parents']) > 1:
+        # Skip merge commits (check if parents exist and has multiple parents)
+        if commit.get('parents', []) and len(commit['parents']) > 1:
             continue
 
         commit_data = CommitData(
