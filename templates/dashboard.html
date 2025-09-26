@@ -6,6 +6,22 @@
 <div class="card">
     <h1>Source2Social Dashboard</h1>
     <p>Your GitHub commits automatically turned into engaging social media posts.</p>
+    
+    <!-- OAuth Connection Status -->
+    <div style="margin-top: 1rem; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
+        <h3 style="margin-top: 0;">X (Twitter) Connection</h3>
+        <div id="oauth-status">
+            <p>Checking connection status...</p>
+        </div>
+        <div id="oauth-actions" style="margin-top: 0.5rem;">
+            <a href="/oauth/x/authorize" class="btn btn-primary" id="connect-btn" style="display: none;">
+                Connect X Account
+            </a>
+            <a href="/oauth/x/disconnect" class="btn btn-secondary" id="disconnect-btn" style="display: none;">
+                Disconnect X Account
+            </a>
+        </div>
+    </div>
 </div>
 
 {% if posts %}
@@ -106,4 +122,35 @@
         </div>
     </div>
 </div>
+
+<script>
+// Check OAuth connection status
+fetch('/oauth/x/status')
+    .then(response => response.json())
+    .then(data => {
+        const statusDiv = document.getElementById('oauth-status');
+        const connectBtn = document.getElementById('connect-btn');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        
+        if (data.connected) {
+            if (data.expired) {
+                statusDiv.innerHTML = '<p style="color: #dc3545;">⚠️ X account connected but token expired. Please reconnect.</p>';
+                connectBtn.style.display = 'inline-block';
+                disconnectBtn.style.display = 'inline-block';
+            } else {
+                statusDiv.innerHTML = '<p style="color: #28a745;">✅ X account connected and active</p>';
+                connectBtn.style.display = 'none';
+                disconnectBtn.style.display = 'inline-block';
+            }
+        } else {
+            statusDiv.innerHTML = '<p style="color: #6c757d;">❌ No X account connected</p>';
+            connectBtn.style.display = 'inline-block';
+            disconnectBtn.style.display = 'none';
+        }
+    })
+    .catch(error => {
+        console.error('Error checking OAuth status:', error);
+        document.getElementById('oauth-status').innerHTML = '<p style="color: #dc3545;">Error checking connection status</p>';
+    });
+</script>
 {% endblock %}

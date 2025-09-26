@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Database Configuration
-DATABASE_PATH = os.getenv("DATABASE_PATH", "reports.db")
+DATABASE_PATH = os.getenv("DATABASE_PATH", "/tmp/reports.db" if os.getenv("VERCEL") else "reports.db")
 
 
 def init_database() -> None:
