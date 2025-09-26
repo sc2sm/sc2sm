@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Post - Source2Social{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1>Edit Post</h1>
+    <a href="/" class="btn btn-secondary btn-small">← Back to Dashboard</a>
+</div>
+
+<div class="card">
+    <h2>Commit Information</h2>
+    <div class="post-meta">
+        <strong>Repository:</strong> {{ post.repository_name }}<br>
+        <strong>Author:</strong> {{ post.author_name }}<br>
+        <strong>Commit:</strong> {{ post.commit_sha[:8] }}<br>
+        <strong>Timestamp:</strong> {{ post.timestamp[:16] }}<br>
+        <strong>Status:</strong> <span class="status-badge status-{{ post.status }}">{{ post.status }}</span>
+    </div>
+
+    <h3>Original Commit Message</h3>
+    <div class="post-content">
+        {{ post.commit_message }}
+    </div>
+
+    {% if post.files_changed %}
+        {% set files = post.files_changed | fromjson %}
+        <h3>Files Changed</h3>
+        <div class="post-meta">
+            {% if files.added %}
+                <strong>Added:</strong> {{ files.added|join(', ') }}<br>
+            {% endif %}
+            {% if files.modified %}
+                <strong>Modified:</strong> {{ files.modified|join(', ') }}<br>
+            {% endif %}
+            {% if files.removed %}
+                <strong>Removed:</strong> {{ files.removed|join(', ') }}
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Generated Post</h2>
+    <div class="post-content">
+        {{ post.generated_post }}
+    </div>
+    <div class="post-meta">
+        Character count: {{ post.generated_post|length }}/280
+    </div>
+</div>
+
+<div class="card">
+    <h2>Edit Your Post</h2>
+    <form method="post">
+        <div class="form-group">
+            <label for="content">Post Content:</label>
+            <textarea
+                id="content"
+                name="content"
+                data-char-limit="280"
+                placeholder="Edit your social media post..."
+            >{{ post.edited_post or post.generated_post }}</textarea>
+        </div>
+
+        <div style="display: flex; gap: 1rem; justify-content: space-between; align-items: center;">
+            <div class="actions">
+                <button type="submit" class="btn">Save Changes</button>
+                <a href="/" class="btn btn-secondary">Cancel</a>
+            </div>
+
+            {% if post.status != 'posted' %}
+                <div>
+                    <small style="color: #666;">
+                        You can publish this post after saving your changes.
+                    </small>
+                </div>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+{% if post.status != 'posted' %}
+<div class="card">
+    <h2>Publish to Social Media</h2>
+    <p>Once you're happy with your post, you can publish it directly to Twitter.</p>
+
+    <form method="post" action="/posts/{{ post.id }}/publish">
+        <button type="submit" class="btn"
+                onclick="return confirm('Are you sure you want to publish this post to Twitter? This action cannot be undone.')">
+            🚀 Publish to Twitter
+        </button>
+    </form>
+
+    <p style="margin-top: 1rem; color: #666; font-size: 0.9rem;">
+        <strong>Note:</strong> Make sure your Twitter API credentials are configured in your environment variables.
+    </p>
+</div>
+{% else %}
+<div class="card">
+    <h2>✅ Post Published</h2>
+    <p>This post was published to {{ post.platform|title }} on {{ post.posted_at[:16] if post.posted_at else 'Unknown date' }}.</p>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>💡 Tips for Great Social Posts</h2>
+    <ul style="margin-left: 2rem;">
+        <li><strong>Keep it personal:</strong> Use "I" or "we" to make it feel authentic</li>
+        <li><strong>Add context:</strong> Explain why this change matters or what problem it solves</li>
+        <li><strong>Be conversational:</strong> End with a question or insight to encourage engagement</li>
+        <li><strong>Show progress:</strong> Highlight the journey, not just the destination</li>
+        <li><strong>Stay under 280 characters:</strong> Twitter's limit ensures your message is punchy</li>
+    </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{
+  "product_id": "prod_001",
+  "company_id": "comp_001",
+  "name": "PulseDeploy",
+  "description": "GitHub-integrated CI/CD and visibility tool that auto-publishes commit insights to social media and team dashboards.",
+  "tech_stack": [
+    "TypeScript",
+    "Node.js",
+    "React",
+    "GitHub Actions"
+  ],
+  "pricing_model": "Freemium with Pro Tier",
+  "status": "Beta"
+}
