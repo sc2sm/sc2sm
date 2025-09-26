@@ -1,0 +1,30 @@
+{
+  "project_id": "proj_002",
+  "product_id": "prod_002",
+  "name": "Food Taste Matching Engine",
+  "objective": "Build a swipable discovery and matching engine based on shared food preferences.",
+  "status": "In Progress",
+  "start_date": "2025-09-20",
+  "lead_engineer": "Ben Michaels",
+  "contributors": [
+    "Ben Michaels",
+    "John Rivera"
+  ],
+  "milestones": [
+    {
+      "name": "Taste Tagging UI",
+      "status": "Completed",
+      "due_date": "2025-09-21"
+    },
+    {
+      "name": "Matching Algorithm",
+      "status": "In Progress",
+      "due_date": "2025-09-28"
+    },
+    {
+      "name": "Chat + Icebreakers",
+      "status": "Planned",
+      "due_date": "2025-09-30"
+    }
+  ]
+}

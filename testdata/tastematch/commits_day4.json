@@ -1,0 +1,105 @@
+[
+  {
+    "id": "42ef1c4056bd",
+    "message": "Connected Firebase auth to onboarding flow",
+    "timestamp": "2025-09-29T09:00:00-07:00",
+    "url": "https://github.com/tastematch/taste-app/commit/fa5399ef79f0",
+    "author": {
+      "name": "Ben Michaels",
+      "email": "ben.michaels@tastematch.app"
+    },
+    "committer": {
+      "name": "Ben Michaels",
+      "email": "ben.michaels@tastematch.app"
+    },
+    "added": [
+      "auth/firebase.js"
+    ],
+    "removed": [],
+    "modified": [
+      "screens/Onboarding.js"
+    ]
+  },
+  {
+    "id": "5c3a1c669af3",
+    "message": "Improved loading times for cuisine image cards",
+    "timestamp": "2025-09-29T11:00:00-07:00",
+    "url": "https://github.com/tastematch/taste-app/commit/806d30f750c3",
+    "author": {
+      "name": "Ben Michaels",
+      "email": "ben.michaels@tastematch.app"
+    },
+    "committer": {
+      "name": "Ben Michaels",
+      "email": "ben.michaels@tastematch.app"
+    },
+    "added": [
+      "assets/images/cuisines/"
+    ],
+    "removed": [],
+    "modified": [
+      "utils/imageLoader.js"
+    ]
+  },
+  {
+    "id": "8ead5c42b82e",
+    "message": "Hooked up chat preview with suggested icebreakers",
+    "timestamp": "2025-09-29T13:00:00-07:00",
+    "url": "https://github.com/tastematch/taste-app/commit/e2997b8f3681",
+    "author": {
+      "name": "John Rivera",
+      "email": "john.rivera@tastematch.app"
+    },
+    "committer": {
+      "name": "John Rivera",
+      "email": "john.rivera@tastematch.app"
+    },
+    "added": [
+      "chat/icebreakers.js"
+    ],
+    "removed": [],
+    "modified": [
+      "components/ChatPreview.js"
+    ]
+  },
+  {
+    "id": "2bc78f7a29c0",
+    "message": "Refined match ranking to weigh 'must-have' food tags higher",
+    "timestamp": "2025-09-29T15:00:00-07:00",
+    "url": "https://github.com/tastematch/taste-app/commit/ae797b0814b0",
+    "author": {
+      "name": "Ben Michaels",
+      "email": "ben.michaels@tastematch.app"
+    },
+    "committer": {
+      "name": "Ben Michaels",
+      "email": "ben.michaels@tastematch.app"
+    },
+    "added": [
+      "engine/rankingLogic.js"
+    ],
+    "removed": [],
+    "modified": []
+  },
+  {
+    "id": "a6c8def81c97",
+    "message": "Updated copy on 'first match' celebration screen",
+    "timestamp": "2025-09-29T17:00:00-07:00",
+    "url": "https://github.com/tastematch/taste-app/commit/d962e003f1ff",
+    "author": {
+      "name": "John Rivera",
+      "email": "john.rivera@tastematch.app"
+    },
+    "committer": {
+      "name": "John Rivera",
+      "email": "john.rivera@tastematch.app"
+    },
+    "added": [
+      "screens/Celebration.js"
+    ],
+    "removed": [],
+    "modified": [
+      "locales/en.json"
+    ]
+  }
+]

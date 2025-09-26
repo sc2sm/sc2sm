@@ -1,0 +1,13 @@
+{
+  "product_id": "prod_002",
+  "company_id": "comp_002",
+  "name": "TasteMatch",
+  "description": "A dating app that connects people based on food preferences \u2014 from sushi lovers to street taco fans.",
+  "tech_stack": [
+    "React Native",
+    "Firebase",
+    "Node.js"
+  ],
+  "pricing_model": "Free with Premium Subscription",
+  "status": "In Development"
+}

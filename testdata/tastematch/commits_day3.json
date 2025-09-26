@@ -1,0 +1,107 @@
+[
+  {
+    "id": "0b0d19758982",
+    "message": "Built food preference tagging UI with emoji selectors",
+    "timestamp": "2025-09-28T09:00:00-07:00",
+    "url": "https://github.com/tastematch/taste-app/commit/a3e2a1ae745c",
+    "author": {
+      "name": "John Rivera",
+      "email": "john.rivera@tastematch.app"
+    },
+    "committer": {
+      "name": "John Rivera",
+      "email": "john.rivera@tastematch.app"
+    },
+    "added": [
+      "components/FoodTags.js"
+    ],
+    "removed": [],
+    "modified": [
+      "styles/foodtags.css"
+    ]
+  },
+  {
+    "id": "4284e7767b2f",
+    "message": "Added filter logic for dietary restrictions (vegan, gluten-free, etc)",
+    "timestamp": "2025-09-28T11:00:00-07:00",
+    "url": "https://github.com/tastematch/taste-app/commit/037338ceae03",
+    "author": {
+      "name": "Ben Michaels",
+      "email": "ben.michaels@tastematch.app"
+    },
+    "committer": {
+      "name": "Ben Michaels",
+      "email": "ben.michaels@tastematch.app"
+    },
+    "added": [
+      "utils/filterLogic.js"
+    ],
+    "removed": [],
+    "modified": [
+      "tests/filterLogic.test.js"
+    ]
+  },
+  {
+    "id": "138b859009e1",
+    "message": "Implemented taste match score calculation (based on shared tags)",
+    "timestamp": "2025-09-28T13:00:00-07:00",
+    "url": "https://github.com/tastematch/taste-app/commit/0a746afa1888",
+    "author": {
+      "name": "Ben Michaels",
+      "email": "ben.michaels@tastematch.app"
+    },
+    "committer": {
+      "name": "Ben Michaels",
+      "email": "ben.michaels@tastematch.app"
+    },
+    "added": [
+      "engine/matchScore.js"
+    ],
+    "removed": [],
+    "modified": [
+      "tests/matchScore.test.js"
+    ]
+  },
+  {
+    "id": "1e0a47a1750b",
+    "message": "Debugged swipe right issue when video profile is active",
+    "timestamp": "2025-09-28T15:00:00-07:00",
+    "url": "https://github.com/tastematch/taste-app/commit/b44871a8521b",
+    "author": {
+      "name": "John Rivera",
+      "email": "john.rivera@tastematch.app"
+    },
+    "committer": {
+      "name": "John Rivera",
+      "email": "john.rivera@tastematch.app"
+    },
+    "added": [
+      "components/SwipeCard.js"
+    ],
+    "removed": [],
+    "modified": [
+      "screens/ProfileScreen.js"
+    ]
+  },
+  {
+    "id": "b4a6eb7ba30f",
+    "message": "Integrated match suggestion carousel on home screen",
+    "timestamp": "2025-09-28T17:00:00-07:00",
+    "url": "https://github.com/tastematch/taste-app/commit/07279702ff32",
+    "author": {
+      "name": "Ben Michaels",
+      "email": "ben.michaels@tastematch.app"
+    },
+    "committer": {
+      "name": "Ben Michaels",
+      "email": "ben.michaels@tastematch.app"
+    },
+    "added": [
+      "components/MatchCarousel.js"
+    ],
+    "removed": [],
+    "modified": [
+      "screens/HomeScreen.js"
+    ]
+  }
+]
