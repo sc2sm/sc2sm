@@ -105,3 +105,4 @@ The API includes comprehensive error handling for:
 - HTTP errors from CodeRabbit API
 - General request failures
 # Test webhook
+Webhook setup complete!
