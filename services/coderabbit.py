@@ -4,7 +4,12 @@ CodeRabbit API integration service
 
 import os
 import requests
+import logging
 from dotenv import load_dotenv
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -51,6 +56,10 @@ def generate_coderabbit_report(from_date, to_date, **kwargs):
             payload[param] = kwargs[param]
 
     try:
+        logger.info(f"Making request to CodeRabbit API: {CODERABBIT_API_BASE}/report.generate")
+        logger.info(f"Request payload: {payload}")
+        logger.info(f"Request headers: {headers}")
+        
         response = requests.post(
             f"{CODERABBIT_API_BASE}/report.generate",
             json=payload,
@@ -58,10 +67,18 @@ def generate_coderabbit_report(from_date, to_date, **kwargs):
             timeout=30
         )
 
+        logger.info(f"Response status code: {response.status_code}")
+        logger.info(f"Response headers: {dict(response.headers)}")
+        logger.info(f"Response text: {response.text}")
+
         if response.status_code == 200:
-            return {"data": response.json(), "status": "success"}
+            response_data = response.json()
+            logger.info(f"Response JSON: {response_data}")
+            return {"data": response_data, "status": "success"}
         else:
             error_data = response.json() if response.headers.get('content-type', '').startswith('application/json') else {"message": response.text}
+            logger.error(f"CodeRabbit API error: {response.status_code}")
+            logger.error(f"Error details: {error_data}")
             return {
                 "error": f"CodeRabbit API error: {response.status_code}",
                 "details": error_data,
