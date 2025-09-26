@@ -9,7 +9,7 @@
 
     <form id="analysis-form" onsubmit="runAnalysis(event)">
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; margin-bottom: 1.5rem;">
             <div class="form-group">
                 <label for="from-date">From Date</label>
                 <input type="date" id="from-date" required>
@@ -18,6 +18,12 @@
             <div class="form-group">
                 <label for="to-date">To Date</label>
                 <input type="date" id="to-date" required>
+            </div>
+
+            <div class="form-group" style="align-self: end;">
+                <button type="button" class="btn btn-secondary btn-small" onclick="resetToCurrentDates()" title="Reset to current week">
+                    📅 Reset Dates
+                </button>
             </div>
         </div>
 
@@ -29,6 +35,9 @@
             <button type="button" class="btn btn-secondary" onclick="loadMostRecent()">
                 Load Most Recent Report
             </button>
+            <button type="button" class="btn btn-secondary" onclick="viewAllReports()">
+                📊 View All Reports
+            </button>
         </div>
     </form>
 </div>
@@ -38,6 +47,15 @@
         <h2>Analysis Results</h2>
         <div id="results-content">
             <!-- Results will be populated here -->
+        </div>
+    </div>
+</div>
+
+<div id="all-reports" style="display: none;">
+    <div class="card">
+        <h2>All Reports</h2>
+        <div id="all-reports-content">
+            <!-- All reports will be populated here -->
         </div>
     </div>
 </div>
@@ -171,16 +189,44 @@ h3 {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+.reports-list {
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.report-item {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.report-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.btn-small {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    border-radius: 6px;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 </style>
 
 <script>
-// Set default dates (last 7 days)
+// Set default dates (last 7 days) - Override browser form memory
 document.addEventListener('DOMContentLoaded', function() {
-    const today = new Date();
-    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-    document.getElementById('to-date').value = today.toISOString().split('T')[0];
-    document.getElementById('from-date').value = weekAgo.toISOString().split('T')[0];
+    // Use setTimeout to ensure this runs after browser form restoration
+    setTimeout(function() {
+        resetToCurrentDates();
+    }, 100);
 });
 
 async function loadMostRecent() {
@@ -203,6 +249,33 @@ async function loadMostRecent() {
     }
 }
 
+async function loadSpecificReport(reportId) {
+    try {
+        const response = await fetch(`/reports/${reportId}`);
+        if (response.ok) {
+            const report = await response.json();
+            if (report.report_data) {
+                let reportData;
+                try {
+                    reportData = typeof report.report_data === 'string' ? JSON.parse(report.report_data) : report.report_data;
+                } catch (e) {
+                    reportData = report.report_data;
+                }
+                displayResults(reportData);
+                document.getElementById('analysis-results').style.display = 'block';
+            } else {
+                throw new Error('No report data available');
+            }
+        } else {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to load report');
+        }
+    } catch (error) {
+        console.error('Error loading specific report:', error);
+        throw error; // Re-throw to be caught by the calling function
+    }
+}
+
 let currentReportId = null;
 let pollInterval = null;
 
@@ -220,54 +293,102 @@ async function runAnalysis(event) {
 
     // Get form data
     const formData = {
-        from_date: document.getElementById('from-date').value,
-        to_date: document.getElementById('to-date').value
+        from: document.getElementById('from-date').value,
+        to: document.getElementById('to-date').value
     };
 
+    // Debug: Log the actual form data being sent
+    console.log('Form data being sent:', formData);
+    console.log('From date input value:', document.getElementById('from-date').value);
+    console.log('To date input value:', document.getElementById('to-date').value);
+
     try {
-        // Start the analysis
-        const response = await fetch('/api/coderabbit/analyze', {
+        // Show processing message immediately
+        resultsContent.innerHTML = `
+            <div class="result-summary">
+                <h3>Analysis In Progress</h3>
+                <p>Generating CodeRabbit report for social media content...</p>
+                <p><strong>Date range:</strong> ${formData.from} to ${formData.to}</p>
+                <div class="loading-indicator">
+                    <div class="loading-spinner"></div>
+                    <span>Generating report... This may take 20-60 seconds.</span>
+                </div>
+            </div>
+        `;
+        resultsDiv.style.display = 'block';
+
+        // Call the reports/generate endpoint with extended timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+
+        const response = await fetch('/reports/generate', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(formData)
+            body: JSON.stringify(formData),
+            signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
         const result = await response.json();
 
+        console.log('Reports response:', response.status, result);
+
         if (response.ok) {
-            currentReportId = result.report_id;
+            // Report generation successful, now load the specific report that was just created
+            button.innerHTML = '<span class="loading">Loading Results</span>';
 
-            // Show processing message
-            resultsContent.innerHTML = `
-                <div class="result-summary">
-                    <h3>Analysis In Progress</h3>
-                    <p>${result.message}</p>
-                    <p><strong>Estimated time:</strong> ${result.estimated_time}</p>
-                    <p><strong>Report ID:</strong> ${result.report_id}</p>
-                    <div class="loading-indicator">
-                        <div class="loading-spinner"></div>
-                        <span>Generating report... Please wait.</span>
-                    </div>
-                </div>
-            `;
-            resultsDiv.style.display = 'block';
+            const reportId = result.report_id;
 
-            // Start polling for completion
-            startPolling(result.report_id);
+            // Small delay to ensure the report is saved
+            setTimeout(async () => {
+                try {
+                    // Load the specific report that was just generated
+                    await loadSpecificReport(reportId);
+                    resetAnalyzeButton();
 
-            // Update button to show polling state
-            button.innerHTML = '<span class="loading">Report Generating</span>';
+                    // Add to history
+                    addToHistory({
+                        from_date: formData.from,
+                        to_date: formData.to
+                    }, { summary: 'Report generated successfully' });
+                } catch (error) {
+                    console.error('Error loading results:', error);
+                    resultsContent.innerHTML = `
+                        <div class="result-summary" style="border-left-color: #28a745;">
+                            <h3>Report Generated Successfully</h3>
+                            <p>Report ID: ${result.report_id}</p>
+                            <p>Status: ${result.status}</p>
+                            <p>Date range: ${result.from} to ${result.to}</p>
+                            <p><strong>The report was generated successfully, but there was an issue loading the results display.</strong></p>
+                        </div>
+                    `;
+                    resetAnalyzeButton();
+                }
+            }, 1000);
+
         } else {
-            alert('Failed to start analysis: ' + (result.error || 'Unknown error'));
-            button.innerHTML = originalContent;
-            button.disabled = false;
+            alert('Failed to generate report: ' + (result.error || 'Unknown error'));
+            resetAnalyzeButton();
         }
     } catch (error) {
-        alert('Network error: ' + error.message);
-        button.innerHTML = originalContent;
-        button.disabled = false;
+        console.error('Analysis error:', error);
+
+        let errorMessage = 'Network error: ' + error.message;
+        if (error.name === 'AbortError') {
+            errorMessage = 'Request timed out after 2 minutes. The server may be busy.';
+        }
+
+        resultsContent.innerHTML = `
+            <div class="result-summary" style="border-left-color: #dc3545;">
+                <h3>Analysis Failed</h3>
+                <p>${errorMessage}</p>
+                <p>Try again or check the browser console for more details.</p>
+            </div>
+        `;
+
+        resetAnalyzeButton();
     }
 }
 
@@ -322,6 +443,9 @@ function resetAnalyzeButton() {
 function displayResults(result) {
     const resultsContent = document.getElementById('results-content');
 
+    // Store the current report data for tweet generation
+    currentReportData = result;
+
     // Handle CodeRabbit API response format
     let report = '';
     let reportCount = 0;
@@ -369,6 +493,9 @@ function displayResults(result) {
             </button>
             <button class="btn btn-secondary" onclick="generateSocialPost()">
                 📱 Create Post
+            </button>
+            <button class="btn" onclick="generateAndPostTweet()" id="tweet-btn">
+                🐦 Generate & Post Tweet
             </button>
         </div>
     `;
@@ -418,6 +545,99 @@ function generateSocialPost() {
     alert('Social post generation would integrate with the main posting system.');
 }
 
+let currentReportData = null; // Store current report data for tweet generation
+
+async function generateAndPostTweet() {
+    const button = document.getElementById('tweet-btn');
+    const originalContent = button.innerHTML;
+
+    if (!currentReportData) {
+        alert('No report data available to generate tweet from.');
+        return;
+    }
+
+    try {
+        // Show loading state
+        button.innerHTML = '🔄 Generating Tweet...';
+        button.disabled = true;
+
+        const response = await fetch('/api/reports/generate-tweet', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                report_data: currentReportData
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            if (result.posted) {
+                button.innerHTML = '✅ Tweet Posted!';
+                alert(`Tweet posted successfully!\n\nTweet: "${result.tweet_content}"`);
+
+                // Reset button after delay
+                setTimeout(() => {
+                    button.innerHTML = originalContent;
+                    button.disabled = false;
+                }, 3000);
+            } else {
+                button.innerHTML = '📝 Tweet Generated';
+
+                // Show the generated tweet and ask if user wants to post it
+                const shouldPost = confirm(`Generated tweet:\n\n"${result.tweet_content}"\n\nDo you want to post this tweet?`);
+
+                if (shouldPost) {
+                    // Call the post endpoint
+                    button.innerHTML = '🔄 Posting Tweet...';
+
+                    const postResponse = await fetch('/api/reports/post-tweet', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            tweet_content: result.tweet_content
+                        })
+                    });
+
+                    const postResult = await postResponse.json();
+
+                    if (postResponse.ok && postResult.posted) {
+                        button.innerHTML = '✅ Tweet Posted!';
+                        alert('Tweet posted successfully!');
+                    } else {
+                        button.innerHTML = '❌ Post Failed';
+                        alert('Failed to post tweet: ' + (postResult.error || 'Unknown error'));
+                    }
+
+                    setTimeout(() => {
+                        button.innerHTML = originalContent;
+                        button.disabled = false;
+                    }, 3000);
+                } else {
+                    button.innerHTML = originalContent;
+                    button.disabled = false;
+                }
+            }
+        } else {
+            throw new Error(result.error || 'Failed to generate tweet');
+        }
+
+    } catch (error) {
+        console.error('Tweet generation error:', error);
+        button.innerHTML = '❌ Generation Failed';
+        alert('Failed to generate tweet: ' + error.message);
+
+        setTimeout(() => {
+            button.innerHTML = originalContent;
+            button.disabled = false;
+        }, 3000);
+    }
+}
+
 function exportResults() {
     // This would export the results as JSON/PDF
     alert('Export functionality coming soon!');
@@ -425,6 +645,180 @@ function exportResults() {
 
 function viewHistoryItem(button) {
     alert('History item viewing coming soon!');
+}
+
+async function viewAllReports() {
+    try {
+        const response = await fetch('/reports');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        displayAllReports(data);
+
+        // Show the all reports section and hide others
+        document.getElementById('all-reports').style.display = 'block';
+        document.getElementById('analysis-results').style.display = 'none';
+
+    } catch (error) {
+        console.error('Error fetching reports:', error);
+        alert('Failed to load reports: ' + error.message);
+    }
+}
+
+function displayAllReports(data) {
+    const allReportsContent = document.getElementById('all-reports-content');
+    const reports = data.reports || [];
+    const totalCount = data.total_count || 0;
+
+    if (reports.length === 0) {
+        allReportsContent.innerHTML = `
+            <div style="background: #f8f9fa; padding: 2rem; border-radius: 8px; text-align: center; border: 2px dashed #dee2e6;">
+                <span style="font-size: 3rem;">📊</span>
+                <h3 style="margin: 1rem 0 0.5rem 0; color: #6c757d;">No Reports Found</h3>
+                <p style="color: #6c757d; margin: 0;">No reports have been generated yet.</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Create summary section
+    const completedReports = reports.filter(r => r.status === 'completed').length;
+    const failedReports = reports.filter(r => r.status === 'failed').length;
+
+    let html = `
+        <div class="result-summary">
+            <h3>Reports Overview</h3>
+            <p>Total reports: ${totalCount} | Completed: ${completedReports} | Failed: ${failedReports}</p>
+        </div>
+
+        <div class="result-stats">
+            <div class="stat-card">
+                <div class="stat-number">${totalCount}</div>
+                <div class="stat-label">Total Reports</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">${completedReports}</div>
+                <div class="stat-label">Completed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">${failedReports}</div>
+                <div class="stat-label">Failed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">${Math.round(completedReports / totalCount * 100)}%</div>
+                <div class="stat-label">Success Rate</div>
+            </div>
+        </div>
+
+        <div style="margin-top: 1.5rem;">
+            <h4>All Reports</h4>
+            <div class="reports-list">
+    `;
+
+    // Add each report
+    reports.forEach(report => {
+        const statusIcon = report.status === 'completed' ? '✅' : report.status === 'failed' ? '❌' : '🔄';
+        const statusColor = report.status === 'completed' ? '#22c55e' : report.status === 'failed' ? '#dc3545' : '#fbbf24';
+
+        html += `
+            <div class="report-item" style="background: rgba(255, 255, 255, 0.9); padding: 1rem; border-radius: 8px; border-left: 4px solid ${statusColor}; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <span>${statusIcon}</span>
+                        <strong>Report #${report.id}</strong>
+                        <span style="background: ${statusColor}; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">${report.status.toUpperCase()}</span>
+                    </div>
+                    <div style="color: #666; font-size: 0.9rem;">
+                        <div><strong>Organization:</strong> ${report.organization}</div>
+                        <div><strong>Date Range:</strong> ${report.from_date} to ${report.to_date}</div>
+                        <div><strong>Created:</strong> ${new Date(report.created_at).toLocaleString()}</div>
+                        ${report.error_message ? `<div style="color: #dc3545;"><strong>Error:</strong> ${report.error_message}</div>` : ''}
+                    </div>
+                </div>
+                <div>
+                    <button class="btn btn-small btn-secondary" onclick="viewReport(${report.id})" ${report.status !== 'completed' ? 'disabled' : ''}>
+                        View
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `
+            </div>
+        </div>
+
+        <div class="actions" style="margin-top: 1.5rem;">
+            <button class="btn btn-secondary" onclick="refreshAllReports()">
+                🔄 Refresh List
+            </button>
+            <button class="btn btn-secondary" onclick="closeAllReports()">
+                ✖️ Close
+            </button>
+        </div>
+    `;
+
+    allReportsContent.innerHTML = html;
+}
+
+async function viewReport(reportId) {
+    try {
+        const response = await fetch(`/reports/${reportId}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const report = await response.json();
+
+        // Parse report data and display it
+        if (report.report_data) {
+            let reportData;
+            try {
+                reportData = typeof report.report_data === 'string' ? JSON.parse(report.report_data) : report.report_data;
+            } catch (e) {
+                reportData = report.report_data;
+            }
+
+            displayResults(reportData);
+            document.getElementById('analysis-results').style.display = 'block';
+            document.getElementById('all-reports').style.display = 'none';
+        } else {
+            alert('No report data available for this report.');
+        }
+
+    } catch (error) {
+        console.error('Error fetching report:', error);
+        alert('Failed to load report: ' + error.message);
+    }
+}
+
+function refreshAllReports() {
+    viewAllReports();
+}
+
+function closeAllReports() {
+    document.getElementById('all-reports').style.display = 'none';
+}
+
+function resetToCurrentDates() {
+    const today = new Date();
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const todayStr = today.toISOString().split('T')[0];
+    const weekAgoStr = weekAgo.toISOString().split('T')[0];
+
+    console.log('Resetting dates to current:');
+    console.log('Today:', todayStr);
+    console.log('Week ago:', weekAgoStr);
+
+    document.getElementById('to-date').value = todayStr;
+    document.getElementById('from-date').value = weekAgoStr;
+
+    // Force browser to recognize the change
+    document.getElementById('to-date').dispatchEvent(new Event('change'));
+    document.getElementById('from-date').dispatchEvent(new Event('change'));
 }
 </script>
 {% endblock %}

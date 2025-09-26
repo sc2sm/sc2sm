@@ -11,7 +11,9 @@
       "Bash(sqlite3:*)",
       "Bash(gh:*)",
       "Bash(python:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(PORT=5001 python:*)",
+      "Bash(pkill:*)"
     ],
     "deny": [],
     "ask": []

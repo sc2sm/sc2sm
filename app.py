@@ -562,29 +562,114 @@ Generate a single social media post (STRICT LIMIT: exactly 250 characters maximu
             print(f"OpenAI API error: {e}")
             return f"Just shipped: {commit_data.commit_message} 🚀\n\nWorking on {commit_data.repository_name} - {files_text}\n\nWhat's everyone else building today?"
 
+    def generate_tweet_from_report(self, report_data: Dict) -> str:
+        """Generate a tweet from CodeRabbit report data"""
+
+        # Extract report content
+        report_content = ""
+        if report_data and report_data.get('result') and report_data['result'].get('data'):
+            reports = report_data['result']['data']
+            report_content = "\n\n".join([item.get('report', '') for item in reports if item.get('report')])
+
+        if not report_content or report_content.strip() == "":
+            report_content = "No pull request activity found in the analyzed period"
+
+        # Create prompt for tweet generation
+        prompt = f"""You are a tech co-founder building in public. Create an engaging tweet from this CodeRabbit analysis report.
+
+Report Content:
+{report_content}
+
+Guidelines:
+- Write in first person ("I" or "we")
+- Make it engaging and share insights about the development work
+- Keep it under 280 characters for Twitter
+- Focus on key takeaways, metrics, or interesting findings
+- Add personality - make it feel human and authentic
+- If no activity was found, frame it positively (planning phase, reflection time, etc.)
+- No hashtags unless they feel organic
+- End with a question or insight that encourages engagement
+
+Generate a single tweet:"""
+
+        try:
+            if openai_client:
+                response = openai_client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[
+                        {"role": "system", "content": "You are an expert at writing engaging technical social media posts for developers building in public."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=100,
+                    temperature=0.8
+                )
+
+                return response.choices[0].message.content.strip()
+            else:
+                # Fallback if OpenAI is not configured
+                if "No pull request activity" in report_content:
+                    return "Taking some time to plan and reflect on the codebase this week. Sometimes the best development happens between the commits 🤔\n\nWhat's your approach to planning vs. coding time?"
+                else:
+                    return f"Just reviewed our recent development work with CodeRabbit AI. Great insights into our code quality and team patterns! 🚀\n\nWhat tools do you use for code analysis?"
+
+        except Exception as e:
+            # Fallback to simple template if OpenAI fails
+            print(f"OpenAI API error: {e}")
+            if "No pull request activity" in report_content:
+                return "Taking some time to plan and reflect on the codebase this week. Sometimes the best development happens between the commits 🤔"
+            else:
+                return "Just reviewed our development work with AI-powered code analysis. Always learning something new from these insights! 🚀"
+
 class TwitterPoster:
     def __init__(self):
+        print("Initializing TwitterPoster...")
+        print(f"tweepy available: {tweepy is not None}")
+        print(f"TWITTER_API_KEY set: {bool(TWITTER_API_KEY and TWITTER_API_KEY != 'your_twitter_api_key_here')}")
+        print(f"TWITTER_API_SECRET set: {bool(TWITTER_API_SECRET and TWITTER_API_SECRET != 'your_twitter_api_secret_here')}")
+        print(f"TWITTER_ACCESS_TOKEN set: {bool(TWITTER_ACCESS_TOKEN and TWITTER_ACCESS_TOKEN != 'your_twitter_access_token_here')}")
+        print(f"TWITTER_ACCESS_TOKEN_SECRET set: {bool(TWITTER_ACCESS_TOKEN_SECRET and TWITTER_ACCESS_TOKEN_SECRET != 'your_twitter_access_token_secret_here')}")
+
         if tweepy and all([TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET]):
-            self.client = tweepy.Client(
-                consumer_key=TWITTER_API_KEY,
-                consumer_secret=TWITTER_API_SECRET,
-                access_token=TWITTER_ACCESS_TOKEN,
-                access_token_secret=TWITTER_ACCESS_TOKEN_SECRET
-            )
+            try:
+                # Try the newer tweepy v2 Client initialization
+                self.client = tweepy.Client(
+                    consumer_key=TWITTER_API_KEY,
+                    consumer_secret=TWITTER_API_SECRET,
+                    access_token=TWITTER_ACCESS_TOKEN,
+                    access_token_secret=TWITTER_ACCESS_TOKEN_SECRET,
+                    wait_on_rate_limit=True
+                )
+
+                # Test the connection by getting user info
+                try:
+                    me = self.client.get_me()
+                    print(f"Twitter client initialized successfully! Connected as: @{me.data.username}")
+                except Exception as test_e:
+                    print(f"Twitter client created but authentication failed: {test_e}")
+                    # Still keep the client, might work for posting
+
+            except Exception as e:
+                print(f"Failed to initialize Twitter client: {e}")
+                self.client = None
         else:
+            print("Twitter client not initialized - missing dependencies or credentials")
             self.client = None
 
     def post_tweet(self, content: str) -> bool:
         """Post a tweet and return success status"""
         if not self.client:
-            print("Twitter client not configured")
+            print("Twitter client not configured - missing API credentials")
             return False
 
         try:
-            self.client.create_tweet(text=content)
+            print(f"Attempting to post tweet: {content[:50]}...")
+            response = self.client.create_tweet(text=content)
+            print(f"Tweet posted successfully! Tweet ID: {response.data['id'] if response.data else 'Unknown'}")
             return True
         except Exception as e:
-            print(f"Failed to post tweet: {e}")
+            print(f"Failed to post tweet: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
 # Initialize components
@@ -990,14 +1075,14 @@ def x_oauth_status():
     try:
         conn = sqlite3.connect(DATABASE_PATH)
         cursor = conn.cursor()
-        
+
         cursor.execute("SELECT user_id, expires_at FROM oauth_tokens WHERE platform = 'x' LIMIT 1")
         result = cursor.fetchone()
-        
+
         if result:
             user_id, expires_at = result
             is_expired = expires_at and datetime.now().timestamp() > float(expires_at)
-            
+
             return jsonify({
                 "connected": True,
                 "user_id": user_id,
@@ -1011,7 +1096,82 @@ def x_oauth_status():
                 "expired": False,
                 "expires_at": None
             })
-        
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/reports/generate-tweet", methods=["POST"])
+def api_generate_tweet_from_report():
+    """Generate a tweet from CodeRabbit report data using OpenAI"""
+    try:
+        data = request.json
+        if not data or 'report_data' not in data:
+            return jsonify({"error": "report_data is required"}), 400
+
+        report_data = data['report_data']
+
+        # Generate tweet using the PostGenerator
+        tweet_content = post_generator.generate_tweet_from_report(report_data)
+
+        return jsonify({
+            "tweet_content": tweet_content,
+            "posted": False,  # Just generated, not posted yet
+            "message": "Tweet generated successfully"
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/reports/post-tweet", methods=["POST"])
+def api_post_tweet():
+    """Post a tweet using the Twitter API"""
+    try:
+        data = request.json
+        if not data or 'tweet_content' not in data:
+            return jsonify({"error": "tweet_content is required"}), 400
+
+        tweet_content = data['tweet_content']
+
+        # Post tweet using TwitterPoster
+        success = twitter_poster.post_tweet(tweet_content)
+
+        if success:
+            return jsonify({
+                "posted": True,
+                "tweet_content": tweet_content,
+                "message": "Tweet posted successfully"
+            })
+        else:
+            return jsonify({
+                "posted": False,
+                "error": "Failed to post tweet. Check Twitter API configuration."
+            }), 500
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/reports/generate-and-post-tweet", methods=["POST"])
+def api_generate_and_post_tweet():
+    """Generate and immediately post a tweet from CodeRabbit report data"""
+    try:
+        data = request.json
+        if not data or 'report_data' not in data:
+            return jsonify({"error": "report_data is required"}), 400
+
+        report_data = data['report_data']
+
+        # Generate tweet
+        tweet_content = post_generator.generate_tweet_from_report(report_data)
+
+        # Post tweet
+        success = twitter_poster.post_tweet(tweet_content)
+
+        return jsonify({
+            "tweet_content": tweet_content,
+            "posted": success,
+            "message": "Tweet generated and posted successfully" if success else "Tweet generated but posting failed"
+        })
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
