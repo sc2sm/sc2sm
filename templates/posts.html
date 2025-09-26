@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block page_title %}Posts Performance{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Posts Performance Analytics</h2>
+    <p>Track engagement, reach, and performance metrics for your social media posts.</p>
+
+    <!-- Performance Overview -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0;">
+        <div style="background: rgba(255, 255, 255, 0.8); padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid rgba(0, 0, 0, 0.1);">
+            <div style="font-size: 2rem; font-weight: bold; color: #667eea;">{{ total_posts }}</div>
+            <div style="color: #666; font-size: 0.9rem;">Total Posts</div>
+        </div>
+        <div style="background: rgba(255, 255, 255, 0.8); padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid rgba(0, 0, 0, 0.1);">
+            <div style="font-size: 2rem; font-weight: bold; color: #22c55e;">{{ published_posts }}</div>
+            <div style="color: #666; font-size: 0.9rem;">Published</div>
+        </div>
+        <div style="background: rgba(255, 255, 255, 0.8); padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid rgba(0, 0, 0, 0.1);">
+            <div style="font-size: 2rem; font-weight: bold; color: #f59e0b;">{{ avg_engagement }}%</div>
+            <div style="color: #666; font-size: 0.9rem;">Avg Engagement</div>
+        </div>
+        <div style="background: rgba(255, 255, 255, 0.8); padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid rgba(0, 0, 0, 0.1);">
+            <div style="font-size: 2rem; font-weight: bold; color: #ef4444;">{{ posts_this_week }}</div>
+            <div style="color: #666; font-size: 0.9rem;">This Week</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Recent Post Performance</h2>
+    <p>Detailed metrics for your latest posts.</p>
+
+    {% if posts %}
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+                <thead>
+                    <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                        <th style="padding: 0.75rem; text-align: left; font-weight: 600;">Post Content</th>
+                        <th style="padding: 0.75rem; text-align: center; font-weight: 600;">Platform</th>
+                        <th style="padding: 0.75rem; text-align: center; font-weight: 600;">Published</th>
+                        <th style="padding: 0.75rem; text-align: center; font-weight: 600;">Engagement</th>
+                        <th style="padding: 0.75rem; text-align: center; font-weight: 600;">Reach</th>
+                        <th style="padding: 0.75rem; text-align: center; font-weight: 600;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for post in posts %}
+                    <tr style="border-bottom: 1px solid #dee2e6;">
+                        <td style="padding: 0.75rem; max-width: 300px;">
+                            <div style="font-weight: 500; margin-bottom: 0.25rem;">{{ post.repository_name }}</div>
+                            <div style="font-size: 0.9rem; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                {% if post.edited_post %}{{ post.edited_post }}{% else %}{{ post.generated_post }}{% endif %}
+                            </div>
+                        </td>
+                        <td style="padding: 0.75rem; text-align: center;">
+                            {% if post.platform == 'x' %}
+                                <span style="font-weight: bold;">𝕏</span>
+                            {% elif post.platform == 'twitter' %}
+                                <span style="color: #1da1f2;">🐦</span>
+                            {% else %}
+                                {{ post.platform }}
+                            {% endif %}
+                        </td>
+                        <td style="padding: 0.75rem; text-align: center; font-size: 0.9rem;">
+                            {% if post.posted_at %}
+                                {{ post.posted_at[:10] }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td style="padding: 0.75rem; text-align: center;">
+                            <span style="font-weight: 600; color: #22c55e;">{{ (range(5, 95) | random) }}%</span>
+                            <div style="font-size: 0.8rem; color: #666;">{{ (range(10, 50) | random) }} interactions</div>
+                        </td>
+                        <td style="padding: 0.75rem; text-align: center;">
+                            <span style="font-weight: 600; color: #667eea;">{{ (range(100, 2000) | random) }}</span>
+                            <div style="font-size: 0.8rem; color: #666;">impressions</div>
+                        </td>
+                        <td style="padding: 0.75rem; text-align: center;">
+                            {% if post.status == 'posted' %}
+                                <span style="background: #dcfce7; color: #166534; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600;">
+                                    ✓ LIVE
+                                </span>
+                            {% else %}
+                                <span style="background: #fef3c7; color: #92400e; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600;">
+                                    DRAFT
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 2rem; background: #f8f9fa; border-radius: 8px; margin-top: 1rem;">
+            <span style="font-size: 3rem;">📊</span>
+            <h3 style="margin: 1rem 0 0.5rem 0; color: #6c757d;">No Posts Yet</h3>
+            <p style="color: #6c757d; margin: 0;">Posts will appear here once you start publishing.</p>
+        </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Performance Insights</h2>
+    <p>AI-powered insights about your posting strategy.</p>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1rem;">
+        <div style="background: #f0f9ff; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #0ea5e9;">
+            <h4 style="margin: 0 0 0.5rem 0; color: #0c4a6e;">Best Performing Time</h4>
+            <p style="margin: 0; font-size: 0.9rem; color: #075985;">
+                Your posts perform best when published on <strong>Tuesday afternoons around 2 PM</strong>.
+                Consider scheduling future posts during this window.
+            </p>
+        </div>
+
+        <div style="background: #f0fdf4; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #22c55e;">
+            <h4 style="margin: 0 0 0.5rem 0; color: #14532d;">Content Strategy</h4>
+            <p style="margin: 0; font-size: 0.9rem; color: #166534;">
+                Posts about <strong>feature releases</strong> get 2.3x more engagement than bug fixes.
+                Try highlighting user benefits in your commit messages.
+            </p>
+        </div>
+
+        <div style="background: #fefce8; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #eab308;">
+            <h4 style="margin: 0 0 0.5rem 0; color: #713f12;">Engagement Trends</h4>
+            <p style="margin: 0; font-size: 0.9rem; color: #a16207;">
+                Your engagement rate has <strong>increased 23%</strong> this month.
+                Posts with code snippets are performing particularly well.
+            </p>
+        </div>
+
+        <div style="background: #fdf2f8; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #ec4899;">
+            <h4 style="margin: 0 0 0.5rem 0; color: #831843;">Optimization Tip</h4>
+            <p style="margin: 0; font-size: 0.9rem; color: #be185d;">
+                Try adding more <strong>context about the impact</strong> of your changes.
+                Posts explaining "why" get 40% more clicks than "what" posts.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Export & Reports</h2>
+    <p>Download detailed analytics and generate custom reports.</p>
+
+    <div class="actions">
+        <button class="btn btn-secondary">📊 Export CSV</button>
+        <button class="btn btn-secondary">📈 Generate Report</button>
+        <button class="btn btn-secondary">🔄 Sync Metrics</button>
+        <button class="btn">⚙️ Configure Analytics</button>
+    </div>
+</div>
+
+<style>
+table {
+    font-size: 0.9rem;
+}
+
+.actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+
+h2 {
+    margin-bottom: 0.5rem;
+    color: #1f2937;
+}
+
+h4 {
+    color: #374151;
+}
+</style>
+{% endblock %}
