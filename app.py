@@ -388,6 +388,88 @@ def publish_post(post_id):
 
     return redirect(url_for("dashboard"))
 
+@app.route("/settings/source")
+def settings_source():
+    """Source code settings page"""
+    return render_template("settings_source.html")
+
+@app.route("/settings/social")
+def settings_social():
+    """Social media settings page"""
+    return render_template("settings_social.html")
+
+@app.route("/settings/coderabbit")
+def settings_coderabbit():
+    """Code Rabbit settings page"""
+    return render_template("settings_coderabbit.html")
+
+@app.route("/settings/post")
+def settings_post():
+    """Post settings page"""
+    return render_template("settings_post.html")
+
+@app.route("/settings/llm")
+def settings_llm():
+    """LLM settings page"""
+    return render_template("settings_llm.html")
+
+@app.route("/integrations/coderabbit")
+def integrations_coderabbit():
+    """Code Rabbit integration page"""
+    return render_template("integrations_coderabbit.html")
+
+@app.route("/api/coderabbit/analyze", methods=["POST"])
+def api_coderabbit_analyze():
+    """Code Rabbit analysis API endpoint"""
+    try:
+        data = request.json
+        project_name = data.get('project_name')
+        branch = data.get('branch', 'main')
+        from_date = data.get('from_date')
+        to_date = data.get('to_date')
+        detailed = data.get('detailed', False)
+
+        if not project_name or not from_date or not to_date:
+            return jsonify({"error": "Missing required parameters"}), 400
+
+        # TODO: Replace with actual Code Rabbit API integration
+        # For now, return mock data for demonstration
+        mock_response = {
+            "summary": f"Analyzed {project_name} repository from {from_date} to {to_date}. Found several areas for improvement including code complexity and documentation coverage.",
+            "commits_analyzed": 23,
+            "files_changed": 45,
+            "issues_found": 8,
+            "score": "85/100",
+            "project_name": project_name,
+            "branch": branch,
+            "date_range": f"{from_date} to {to_date}",
+            "timestamp": datetime.now().isoformat()
+        }
+
+        if detailed:
+            mock_response["detailed_analysis"] = f"""Code Quality Report for {project_name}:
+
+✅ Strengths:
+- Good test coverage (78%)
+- Consistent code formatting
+- Well-structured module organization
+
+⚠️ Areas for Improvement:
+- High cyclomatic complexity in 3 files
+- Missing documentation for 12 functions
+- Potential security issues in authentication module
+
+🔍 Recommendations:
+1. Break down complex functions in utils.py
+2. Add JSDoc comments for public APIs
+3. Review authentication token handling
+4. Consider adding integration tests"""
+
+        return jsonify(mock_response)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/health")
 def health_check():
     """Health check endpoint"""

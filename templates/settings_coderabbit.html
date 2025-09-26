@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block page_title %}Code Rabbit Settings{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Code Rabbit API Configuration</h2>
+    <p>Configure your Code Rabbit API key to enable automated code review analysis.</p>
+
+    <div class="form-group">
+        <label for="coderabbit-api-key">Code Rabbit API Key</label>
+        <input type="password" id="coderabbit-api-key" placeholder="Enter your Code Rabbit API key">
+        <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
+            You can get your API key from <a href="https://coderabbit.ai/dashboard/api-keys" target="_blank" style="color: #667eea;">Code Rabbit Dashboard</a>
+        </p>
+    </div>
+
+    <div style="background: rgba(102, 126, 234, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #667eea; margin: 1rem 0;">
+        <strong>Setup Instructions:</strong>
+        <ol style="margin: 0.5rem 0 0 1rem;">
+            <li>Sign up for a Code Rabbit account at <a href="https://coderabbit.ai" target="_blank" style="color: #667eea;">coderabbit.ai</a></li>
+            <li>Navigate to your dashboard and generate an API key</li>
+            <li>Enter the API key above and save settings</li>
+            <li>Use the Integration section to analyze your repositories</li>
+        </ol>
+    </div>
+
+    <div class="actions">
+        <button class="btn">Save API Key</button>
+        <button class="btn btn-secondary">Test Connection</button>
+    </div>
+</div>
+
+
+<style>
+input[type="text"], input[type="password"], input[type="date"], textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: inherit;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+}
+
+h2 {
+    margin-bottom: 0.5rem;
+    color: #1f2937;
+}
+
+h3 {
+    margin: 0;
+    color: #374151;
+}
+
+a {
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+</style>
+{% endblock %}

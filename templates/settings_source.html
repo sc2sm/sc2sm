@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block page_title %}Source Code Settings{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>GitHub Integration</h2>
+    <p>Configure your GitHub repositories and webhook settings.</p>
+
+    <div style="background: rgba(102, 126, 234, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #667eea; margin-bottom: 1.5rem;">
+        <strong>Option A: Manual Setup (Recommended)</strong>
+        <p style="margin: 0.5rem 0;">Follow these steps to manually configure GitHub webhooks:</p>
+    </div>
+
+    <div class="form-group">
+        <label for="webhook-url">Webhook URL</label>
+        <div style="display: flex; gap: 0.5rem;">
+            <input type="text" id="webhook-url" value="{{ request.url_root }}webhook/github" readonly style="flex: 1;">
+            <button class="btn btn-secondary btn-small" onclick="copyToClipboard('webhook-url')">Copy</button>
+        </div>
+        <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
+            Copy this URL to use in your GitHub repository webhook settings.
+        </p>
+    </div>
+
+    <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin: 1rem 0;">
+        <h3 style="margin-top: 0;">Manual Webhook Setup Instructions:</h3>
+        <ol style="margin: 0.5rem 0 0 1rem; line-height: 1.6;">
+            <li>Go to your GitHub repository</li>
+            <li>Click on <strong>Settings</strong> → <strong>Webhooks</strong></li>
+            <li>Click <strong>Add webhook</strong></li>
+            <li>Paste the webhook URL above in the <strong>Payload URL</strong> field</li>
+            <li>Set <strong>Content type</strong> to <code>application/json</code></li>
+            <li>Select <strong>Just the push event</strong></li>
+            <li>Ensure <strong>Active</strong> is checked</li>
+            <li>Click <strong>Add webhook</strong></li>
+        </ol>
+    </div>
+
+    <div style="background: rgba(255, 193, 7, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #ffc107; margin: 1rem 0;">
+        <strong>Option B: GitHub App Authorization</strong>
+        <p style="margin: 0.5rem 0 0 0; color: #666;">Coming soon - One-click GitHub integration</p>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Repository Configuration</h2>
+    <p>Manage which repositories should generate social posts.</p>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <h3>Active Repositories</h3>
+        <button class="btn btn-secondary btn-small">Add Repository</button>
+    </div>
+
+    <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; border: 2px dashed #dee2e6;">
+        <div style="text-align: center; color: #6c757d;">
+            <span style="font-size: 3rem;">📁</span>
+            <p>No repositories configured yet</p>
+            <p style="font-size: 0.9rem;">Repositories will appear here automatically when they send webhooks.</p>
+        </div>
+    </div>
+</div>
+
+
+<style>
+input[type="text"], input[type="password"], textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: inherit;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+}
+
+input[readonly] {
+    background: rgba(248, 249, 250, 0.9);
+    color: #6c757d;
+}
+
+h2 {
+    margin-bottom: 0.5rem;
+    color: #1f2937;
+}
+
+h3 {
+    margin: 0;
+    color: #374151;
+}
+
+code {
+    background: rgba(0, 0, 0, 0.1);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.9rem;
+}
+</style>
+
+<script>
+function copyToClipboard(elementId) {
+    const element = document.getElementById(elementId);
+    element.select();
+    element.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(element.value).then(() => {
+        const button = event.target;
+        const originalText = button.textContent;
+        button.textContent = 'Copied!';
+        button.style.background = 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.style.background = '';
+        }, 2000);
+    });
+}
+</script>
+{% endblock %}

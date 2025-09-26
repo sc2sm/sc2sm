@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block page_title %}Code Rabbit Analysis{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Repository Analysis</h2>
+    <p>Generate code review insights and summaries using Code Rabbit AI.</p>
+
+    <form id="analysis-form" onsubmit="runAnalysis(event)">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div class="form-group">
+                <label for="project-name">Project Name</label>
+                <input type="text" id="project-name" placeholder="e.g., username/repository-name" required>
+                <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
+                    Format: owner/repository (e.g., facebook/react)
+                </p>
+            </div>
+
+            <div class="form-group">
+                <label for="branch">Branch (Optional)</label>
+                <input type="text" id="branch" placeholder="main" value="main">
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="form-group">
+                <label for="from-date">From Date</label>
+                <input type="date" id="from-date" required>
+            </div>
+
+            <div class="form-group">
+                <label for="to-date">To Date</label>
+                <input type="date" id="to-date" required>
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label>
+                <input type="checkbox" id="detailed-analysis" style="margin-right: 0.5rem;">
+                Include detailed file-by-file analysis
+            </label>
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="btn" id="analyze-btn">
+                <span>🔍 Analyze Repository</span>
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="fillSampleData()">
+                Use Sample Data
+            </button>
+        </div>
+    </form>
+</div>
+
+<div id="analysis-results" style="display: none;">
+    <div class="card">
+        <h2>Analysis Results</h2>
+        <div id="results-content">
+            <!-- Results will be populated here -->
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Analysis History</h2>
+    <p>Previous Code Rabbit analysis requests.</p>
+
+    <div id="analysis-history">
+        <div style="background: #f8f9fa; padding: 2rem; border-radius: 8px; text-align: center; border: 2px dashed #dee2e6;">
+            <span style="font-size: 3rem;">📊</span>
+            <h3 style="margin: 1rem 0 0.5rem 0; color: #6c757d;">No Analysis History</h3>
+            <p style="color: #6c757d; margin: 0;">Your analysis history will appear here after running your first analysis.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+input[type="text"], input[type="date"], textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: inherit;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+}
+
+h2 {
+    margin-bottom: 0.5rem;
+    color: #1f2937;
+}
+
+h3 {
+    margin: 0;
+    color: #374151;
+}
+
+.loading {
+    display: inline-flex;
+    align-items: center;
+}
+
+.loading::after {
+    content: '';
+    width: 1rem;
+    height: 1rem;
+    margin-left: 0.5rem;
+    border: 2px solid transparent;
+    border-top: 2px solid #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.result-summary {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border-left: 4px solid #667eea;
+    margin: 1rem 0;
+}
+
+.result-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.8);
+    padding: 1rem;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #667eea;
+}
+
+.stat-label {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.history-item {
+    background: rgba(255, 255, 255, 0.9);
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 4px solid #22c55e;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.history-meta {
+    color: #666;
+    font-size: 0.9rem;
+}
+</style>
+
+<script>
+// Set default dates (last 7 days)
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date();
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    document.getElementById('to-date').value = today.toISOString().split('T')[0];
+    document.getElementById('from-date').value = weekAgo.toISOString().split('T')[0];
+});
+
+function fillSampleData() {
+    document.getElementById('project-name').value = 'facebook/react';
+    document.getElementById('branch').value = 'main';
+
+    const today = new Date();
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    document.getElementById('to-date').value = today.toISOString().split('T')[0];
+    document.getElementById('from-date').value = weekAgo.toISOString().split('T')[0];
+}
+
+async function runAnalysis(event) {
+    event.preventDefault();
+
+    const button = document.getElementById('analyze-btn');
+    const originalContent = button.innerHTML;
+    const resultsDiv = document.getElementById('analysis-results');
+    const resultsContent = document.getElementById('results-content');
+
+    // Show loading state
+    button.innerHTML = '<span class="loading">Analyzing</span>';
+    button.disabled = true;
+
+    // Get form data
+    const formData = {
+        project_name: document.getElementById('project-name').value,
+        branch: document.getElementById('branch').value || 'main',
+        from_date: document.getElementById('from-date').value,
+        to_date: document.getElementById('to-date').value,
+        detailed: document.getElementById('detailed-analysis').checked
+    };
+
+    try {
+        const response = await fetch('/api/coderabbit/analyze', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            // Show results
+            displayResults(result);
+            resultsDiv.style.display = 'block';
+            addToHistory(formData, result);
+        } else {
+            alert('Analysis failed: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Network error: ' + error.message);
+    } finally {
+        // Reset button
+        button.innerHTML = originalContent;
+        button.disabled = false;
+    }
+}
+
+function displayResults(result) {
+    const resultsContent = document.getElementById('results-content');
+
+    resultsContent.innerHTML = `
+        <div class="result-summary">
+            <h3>Analysis Summary</h3>
+            <p>${result.summary || 'Analysis completed successfully.'}</p>
+        </div>
+
+        <div class="result-stats">
+            <div class="stat-card">
+                <div class="stat-number">${result.commits_analyzed || 0}</div>
+                <div class="stat-label">Commits Analyzed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">${result.files_changed || 0}</div>
+                <div class="stat-label">Files Changed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">${result.issues_found || 0}</div>
+                <div class="stat-label">Issues Found</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">${result.score || 'N/A'}</div>
+                <div class="stat-label">Code Quality Score</div>
+            </div>
+        </div>
+
+        ${result.detailed_analysis ? `
+            <div style="margin-top: 1.5rem;">
+                <h4>Detailed Analysis</h4>
+                <pre style="background: #f8f9fa; padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.9rem;">${result.detailed_analysis}</pre>
+            </div>
+        ` : ''}
+
+        <div class="actions" style="margin-top: 1.5rem;">
+            <button class="btn btn-secondary" onclick="generateSocialPost()">
+                Generate Social Post
+            </button>
+            <button class="btn btn-secondary" onclick="exportResults()">
+                Export Results
+            </button>
+        </div>
+    `;
+}
+
+function addToHistory(formData, result) {
+    const historyDiv = document.getElementById('analysis-history');
+    const timestamp = new Date().toLocaleString();
+
+    if (historyDiv.children[0].style.textAlign === 'center') {
+        historyDiv.innerHTML = '';
+    }
+
+    const historyItem = document.createElement('div');
+    historyItem.className = 'history-item';
+    historyItem.innerHTML = `
+        <div>
+            <strong>${formData.project_name}</strong>
+            <div class="history-meta">
+                ${formData.from_date} to ${formData.to_date} • ${timestamp}
+            </div>
+        </div>
+        <div>
+            <button class="btn btn-small btn-secondary" onclick="viewHistoryItem(this)">
+                View
+            </button>
+        </div>
+    `;
+
+    historyDiv.insertBefore(historyItem, historyDiv.firstChild);
+}
+
+function generateSocialPost() {
+    // This would integrate with the social posting feature
+    alert('Social post generation would integrate with the main posting system.');
+}
+
+function exportResults() {
+    // This would export the results as JSON/PDF
+    alert('Export functionality coming soon!');
+}
+
+function viewHistoryItem(button) {
+    alert('History item viewing coming soon!');
+}
+</script>
+{% endblock %}

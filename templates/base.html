@@ -12,98 +12,163 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
             line-height: 1.6;
-            color: #333;
-            background-color: #f8f9fa;
+            color: #1f2937;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-
-        header {
-            background: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 2rem;
-        }
-
-        .header-content {
+        .app-layout {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 0;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 260px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 2rem 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 1000;
         }
 
         .logo {
+            padding: 0 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .logo h1 {
             font-size: 1.5rem;
-            font-weight: bold;
-            color: #1da1f2;
-            text-decoration: none;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
-        .nav {
+        .logo p {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-top: 0.25rem;
+        }
+
+        .nav-section {
+            margin-bottom: 2rem;
+        }
+
+        .nav-title {
+            padding: 0 2rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #9ca3af;
+            letter-spacing: 1px;
+            margin-bottom: 0.75rem;
+        }
+
+        .nav-item {
             display: flex;
-            gap: 1rem;
-        }
-
-        .nav a {
-            color: #666;
+            align-items: center;
+            padding: 0.75rem 2rem;
+            color: #374151;
             text-decoration: none;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            transition: background-color 0.2s;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
         }
 
-        .nav a:hover {
-            background-color: #f0f0f0;
+        .nav-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+            border-left-color: #667eea;
+            color: #667eea;
+        }
+
+        .nav-item.active {
+            background: rgba(102, 126, 234, 0.15);
+            border-left-color: #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .nav-icon {
+            margin-right: 0.75rem;
+            font-size: 1.1rem;
         }
 
         .main-content {
-            padding: 2rem 0;
+            flex: 1;
+            margin-left: 260px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            min-height: 100vh;
+        }
+
+        .content-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 1.5rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .content-body {
+            padding: 2rem;
         }
 
         .card {
-            background: white;
+            background: rgba(255, 255, 255, 0.95);
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border: 1px solid rgba(0, 0, 0, 0.1);
             padding: 1.5rem;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
 
         .btn {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
             padding: 0.75rem 1.5rem;
-            background-color: #1da1f2;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             text-decoration: none;
-            border-radius: 4px;
+            border-radius: 8px;
             border: none;
             cursor: pointer;
             font-size: 0.9rem;
-            transition: background-color 0.2s;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
         }
 
         .btn:hover {
-            background-color: #1991da;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
         }
 
         .btn-secondary {
-            background-color: #6c757d;
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+            color: #374151;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
         .btn-secondary:hover {
-            background-color: #5a6268;
+            background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
         }
 
         .btn-danger {
-            background-color: #dc3545;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
         }
 
         .btn-danger:hover {
-            background-color: #c82333;
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
         }
 
         .btn-small {
@@ -134,27 +199,32 @@
         }
 
         .status-badge {
-            display: inline-block;
-            padding: 0.25rem 0.5rem;
-            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
             font-size: 0.75rem;
-            font-weight: bold;
+            font-weight: 600;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .status-draft {
-            background-color: #e9ecef;
-            color: #6c757d;
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+            color: #6b7280;
+            border: 1px solid #d1d5db;
         }
 
         .status-edited {
-            background-color: #fff3cd;
-            color: #856404;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #92400e;
+            border: 1px solid #f59e0b;
         }
 
         .status-posted {
-            background-color: #d1ecf1;
-            color: #0c5460;
+            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+            color: #166534;
+            border: 1px solid #22c55e;
         }
 
         .post-content {
@@ -212,40 +282,266 @@
         .char-count.error {
             color: #e74c3c;
         }
+
+        /* Animation enhancements */
+        .nav-item {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .nav-item:hover::before {
+            left: 100%;
+        }
+
+
+        /* Loading animations */
+        .loading-dots {
+            display: inline-block;
+        }
+
+        .loading-dots::after {
+            content: '';
+            animation: loading-dots 1.5s infinite;
+        }
+
+        @keyframes loading-dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        /* Pulse animation for status badges */
+        .status-posted {
+            animation: pulse-success 2s infinite;
+        }
+
+        @keyframes pulse-success {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        /* Improved form styling */
+        .form-group input, .form-group textarea, .form-group select {
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-1px);
+        }
+
+        /* Enhanced button hover effects */
+        .btn {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.3s ease, height 0.3s ease;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        /* Sidebar animations */
+        .sidebar {
+            transition: all 0.3s ease;
+        }
+
+        .nav-section {
+            opacity: 0;
+            transform: translateX(-20px);
+            animation: slideInLeft 0.6s ease forwards;
+        }
+
+        .nav-section:nth-child(2) { animation-delay: 0.1s; }
+        .nav-section:nth-child(3) { animation-delay: 0.2s; }
+        .nav-section:nth-child(4) { animation-delay: 0.3s; }
+
+        @keyframes slideInLeft {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Content animations */
+        .content-body {
+            animation: fadeInUp 0.6s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive design preview */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                z-index: 2000;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+                position: fixed;
+                top: 1rem;
+                left: 1rem;
+                z-index: 3000;
+                background: rgba(255, 255, 255, 0.9);
+                border: none;
+                border-radius: 8px;
+                padding: 0.5rem;
+                backdrop-filter: blur(10px);
+                cursor: pointer;
+            }
+        }
+
+        .mobile-menu-btn {
+            display: none;
+        }
     </style>
 </head>
 <body>
-    <header>
-        <div class="container">
-            <div class="header-content">
-                <a href="/" class="logo">Source2Social</a>
-                <nav class="nav">
-                    <a href="/">Dashboard</a>
-                    <a href="/health">Health</a>
-                </nav>
-            </div>
-        </div>
-    </header>
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">
+        <span style="font-size: 1.2rem;">☰</span>
+    </button>
 
-    <main class="main-content">
-        <div class="container">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    <div class="flash-messages">
-                        {% for category, message in messages %}
-                            <div class="flash-message flash-{{ category }}">
-                                {{ message }}
-                            </div>
-                        {% endfor %}
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar">
+            <div class="logo">
+                <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 0.75rem; font-size: 1.5rem;">
+                        🚀
                     </div>
-                {% endif %}
-            {% endwith %}
+                    <h1 style="margin: 0; font-size: 1.3rem;">S2S</h1>
+                </div>
+                <p style="margin: 0; font-size: 0.75rem; color: #6b7280; padding-left: 0;">Source to Social</p>
+            </div>
 
-            {% block content %}{% endblock %}
-        </div>
-    </main>
+            <nav>
+                <div class="nav-section">
+                    <div class="nav-title">Main</div>
+                    <a href="/" class="nav-item active">
+                        <span class="nav-icon">📊</span>
+                        Posts
+                    </a>
+                    <a href="/integrations/coderabbit" class="nav-item">
+                        <span class="nav-icon">🐰</span>
+                        Review Code
+                    </a>
+                    <a href="/settings/post" class="nav-item">
+                        <span class="nav-icon">⚙️</span>
+                        Config
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-title">Settings</div>
+                    <a href="/settings/source" class="nav-item">
+                        <span class="nav-icon">🔧</span>
+                        Source Code
+                    </a>
+                    <a href="/settings/social" class="nav-item">
+                        <span class="nav-icon">📱</span>
+                        Social
+                    </a>
+                    <a href="/settings/llm" class="nav-item">
+                        <span class="nav-icon">🤖</span>
+                        LLM Settings
+                    </a>
+                    <a href="/settings/coderabbit" class="nav-item">
+                        <span class="nav-icon">🐰</span>
+                        Code Rabbit
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="content-header">
+                <h1>{% block page_title %}Dashboard{% endblock %}</h1>
+            </div>
+
+            <div class="content-body">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="flash-messages">
+                            {% for category, message in messages %}
+                                <div class="flash-message flash-{{ category }}">
+                                    {{ message }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
 
     <script>
+        // Mobile sidebar toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+        }
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const menuBtn = document.querySelector('.mobile-menu-btn');
+
+            if (window.innerWidth <= 768 &&
+                !sidebar.contains(event.target) &&
+                !menuBtn.contains(event.target) &&
+                sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+            }
+        });
+
         // Character count for textareas
         document.addEventListener('DOMContentLoaded', function() {
             const textareas = document.querySelectorAll('textarea[data-char-limit]');
@@ -271,6 +567,34 @@
 
                 textarea.addEventListener('input', updateCount);
                 updateCount(); // Initial count
+            });
+
+            // Set active navigation item based on current page
+            const currentPath = window.location.pathname;
+            const navItems = document.querySelectorAll('.nav-item');
+
+            navItems.forEach(item => {
+                item.classList.remove('active');
+                if (item.getAttribute('href') === currentPath) {
+                    item.classList.add('active');
+                }
+            });
+
+            // Add loading animation to buttons when clicked
+            const buttons = document.querySelectorAll('.btn');
+            buttons.forEach(button => {
+                button.addEventListener('click', function() {
+                    if (this.type === 'submit' || this.tagName === 'BUTTON') {
+                        const originalText = this.textContent;
+                        this.innerHTML = '<span class="loading-dots">Processing</span>';
+                        this.disabled = true;
+
+                        setTimeout(() => {
+                            this.textContent = originalText;
+                            this.disabled = false;
+                        }, 2000);
+                    }
+                });
             });
         });
     </script>
