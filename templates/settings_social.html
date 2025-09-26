@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block page_title %}Social Media Settings{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Twitter/X Integration</h2>
+    <p>Choose how you want to share your posts on Twitter/X.</p>
+
+    <div style="margin: 1rem 0;">
+        <div style="background: rgba(102, 126, 234, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #667eea; margin-bottom: 1rem;">
+            <strong>Option A: URL Generation (Recommended)</strong>
+            <p style="margin: 0.5rem 0 0 0;">Generate shareable Twitter URLs that open the compose window with your content pre-filled.</p>
+        </div>
+
+        <div class="form-group">
+            <label>
+                <input type="radio" name="twitter-mode" value="url" checked style="margin-right: 0.5rem;">
+                Generate Twitter URL
+            </label>
+            <p style="color: #666; font-size: 0.9rem; margin: 0.25rem 0 0 1.5rem;">
+                Creates a URL like: <code>https://twitter.com/intent/tweet?text=...</code>
+            </p>
+        </div>
+
+        <div style="background: rgba(255, 193, 7, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #ffc107; margin: 1rem 0;">
+            <strong>Option B: Direct API Posting</strong>
+            <p style="margin: 0.5rem 0 0 0;">Automatically post directly to Twitter using API credentials.</p>
+        </div>
+
+        <div class="form-group">
+            <label>
+                <input type="radio" name="twitter-mode" value="api" style="margin-right: 0.5rem;">
+                Direct API Integration
+            </label>
+            <p style="color: #666; font-size: 0.9rem; margin: 0.25rem 0 1rem 1.5rem;">
+                Requires Twitter Developer account and API credentials.
+            </p>
+        </div>
+    </div>
+
+    <div id="api-credentials" style="display: none;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+            <div class="form-group">
+                <label for="twitter-api-key">API Key</label>
+                <input type="password" id="twitter-api-key" placeholder="Configure in .env file" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="twitter-api-secret">API Secret</label>
+                <input type="password" id="twitter-api-secret" placeholder="Configure in .env file" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="twitter-access-token">Access Token</label>
+                <input type="password" id="twitter-access-token" placeholder="Configure in .env file" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="twitter-access-secret">Access Token Secret</label>
+                <input type="password" id="twitter-access-secret" placeholder="Configure in .env file" readonly>
+            </div>
+        </div>
+
+        <div style="background: rgba(102, 126, 234, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #667eea; margin: 1rem 0;">
+            <strong>API Setup Instructions:</strong>
+            <ol style="margin: 0.5rem 0 0 1rem;">
+                <li>Create a Twitter Developer account</li>
+                <li>Create a new app and generate API keys</li>
+                <li>Add the credentials to your .env file</li>
+                <li>Restart the application</li>
+            </ol>
+        </div>
+
+        <div class="form-group">
+            <label>
+                <input type="checkbox" style="margin-right: 0.5rem;">
+                Enable automatic posting
+            </label>
+            <p style="color: #666; font-size: 0.9rem; margin-top: 0.25rem;">
+                When enabled, approved posts will be automatically published to Twitter.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>LinkedIn Integration</h2>
+    <p>Connect your LinkedIn account for professional updates.</p>
+
+    <div style="background: #f8f9fa; padding: 2rem; border-radius: 8px; text-align: center; border: 2px dashed #dee2e6;">
+        <span style="font-size: 3rem;">🔗</span>
+        <h3 style="margin: 1rem 0 0.5rem 0; color: #6c757d;">Coming Soon</h3>
+        <p style="color: #6c757d; margin: 0;">LinkedIn integration will be available in a future update.</p>
+    </div>
+</div>
+
+
+<style>
+input[type="text"], input[type="password"], input[type="number"], select, textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: inherit;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+}
+
+input[readonly] {
+    background: rgba(248, 249, 250, 0.9);
+    color: #6c757d;
+}
+
+h2 {
+    margin-bottom: 0.5rem;
+    color: #1f2937;
+}
+
+h3 {
+    margin: 0;
+    color: #374151;
+}
+
+input[type="radio"], input[type="checkbox"] {
+    width: auto;
+}
+
+input[type="range"] {
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+code {
+    background: rgba(0, 0, 0, 0.1);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.9rem;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const radioButtons = document.querySelectorAll('input[name="twitter-mode"]');
+    const apiCredentials = document.getElementById('api-credentials');
+
+    radioButtons.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'api') {
+                apiCredentials.style.display = 'block';
+            } else {
+                apiCredentials.style.display = 'none';
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

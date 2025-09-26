@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block page_title %}Post Settings{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Post Generation Settings</h2>
+    <p>Customize how your commits are turned into social posts.</p>
+
+    <div class="form-group">
+        <label for="post-template">Custom Post Template</label>
+        <textarea id="post-template" rows="6" placeholder="Leave empty to use default AI generation...">{% raw %}Just shipped: {{commit_message}} 🚀
+
+Working on {{repository_name}} - {{files_changed}}
+
+What's everyone else building today?{% endraw %}</textarea>
+        <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
+            Use variables: {{commit_message}}, {{author_name}}, {{repository_name}}, {{files_changed}}
+        </p>
+    </div>
+
+    <div class="form-group">
+        <label>
+            <input type="checkbox" style="margin-right: 0.5rem;">
+            Skip merge commits
+        </label>
+    </div>
+
+    <div class="form-group">
+        <label>
+            <input type="checkbox" style="margin-right: 0.5rem;">
+            Only process commits from main branch
+        </label>
+    </div>
+
+    <div class="actions">
+        <button class="btn">Save Settings</button>
+        <button class="btn btn-secondary">Reset to Defaults</button>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Posting Schedule</h2>
+    <p>Control when and how often posts are published.</p>
+
+    <div class="form-group">
+        <label>
+            <input type="radio" name="posting-mode" value="manual" checked style="margin-right: 0.5rem;">
+            Manual Approval
+        </label>
+        <p style="color: #666; font-size: 0.9rem; margin: 0.25rem 0 1rem 1.5rem;">
+            Review and approve each post before publishing.
+        </p>
+
+        <label>
+            <input type="radio" name="posting-mode" value="auto" style="margin-right: 0.5rem;">
+            Automatic Posting
+        </label>
+        <p style="color: #666; font-size: 0.9rem; margin: 0.25rem 0 1rem 1.5rem;">
+            Automatically publish posts after generation.
+        </p>
+
+        <label>
+            <input type="radio" name="posting-mode" value="scheduled" style="margin-right: 0.5rem;">
+            Daily Digest
+        </label>
+        <p style="color: #666; font-size: 0.9rem; margin: 0.25rem 0 1rem 1.5rem;">
+            Compile commits into a single daily summary post.
+        </p>
+    </div>
+
+    <div class="form-group">
+        <label for="max-posts-per-day">Maximum Posts Per Day</label>
+        <input type="number" id="max-posts-per-day" value="3" min="1" max="10" style="width: 100px;">
+    </div>
+
+    <div class="form-group">
+        <label for="posting-time">Preferred Posting Time</label>
+        <input type="time" id="posting-time" value="09:00">
+        <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
+            Time for scheduled posts (your local timezone)
+        </p>
+    </div>
+
+    <div class="actions">
+        <button class="btn">Save Schedule</button>
+        <button class="btn btn-secondary">Test Schedule</button>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Content Filters</h2>
+    <p>Configure what commits should generate posts.</p>
+
+    <div class="form-group">
+        <label for="min-files-changed">Minimum Files Changed</label>
+        <input type="number" id="min-files-changed" value="1" min="0" style="width: 100px;">
+        <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
+            Only generate posts for commits that change at least this many files
+        </p>
+    </div>
+
+    <div class="form-group">
+        <label for="excluded-keywords">Excluded Keywords</label>
+        <input type="text" id="excluded-keywords" placeholder="wip, test, debug, temp">
+        <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
+            Comma-separated list of keywords. Commits with these in the message will be skipped.
+        </p>
+    </div>
+
+    <div class="form-group">
+        <label for="required-keywords">Required Keywords (Optional)</label>
+        <input type="text" id="required-keywords" placeholder="feat, feature, add, implement">
+        <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
+            Only generate posts for commits containing these keywords
+        </p>
+    </div>
+
+    <div class="actions">
+        <button class="btn">Save Filters</button>
+        <button class="btn btn-secondary">Clear All</button>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Prompt Engineering</h2>
+    <p>Customize the AI prompt used for generating social media posts.</p>
+
+    <div class="form-group">
+        <label for="system-prompt">System Prompt</label>
+        <textarea id="system-prompt" rows="4" placeholder="You are an expert at writing engaging technical social media posts...">You are an expert at writing engaging technical social media posts for developers building in public.</textarea>
+        <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
+            The system message that defines the AI's role and behavior.
+        </p>
+    </div>
+
+    <div class="form-group">
+        <label for="custom-instructions">Additional Instructions</label>
+        <textarea id="custom-instructions" rows="3" placeholder="Always include emojis, keep under 250 characters..."></textarea>
+        <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
+            Optional additional instructions to customize post style and format.
+        </p>
+    </div>
+
+    <div class="form-group">
+        <label>
+            <input type="checkbox" style="margin-right: 0.5rem;">
+            Include repository context in prompts
+        </label>
+        <p style="color: #666; font-size: 0.9rem; margin-top: 0.25rem;">
+            Adds repository description and tech stack to the AI prompt for better context.
+        </p>
+    </div>
+
+    <div class="actions">
+        <button class="btn">Save Prompt</button>
+        <button class="btn btn-secondary">Reset to Default</button>
+        <button class="btn btn-secondary">Test Prompt</button>
+    </div>
+</div>
+
+<style>
+input[type="text"], input[type="number"], input[type="time"], textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: inherit;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+h2 {
+    margin-bottom: 0.5rem;
+    color: #1f2937;
+}
+
+input[type="radio"], input[type="checkbox"] {
+    width: auto;
+}
+</style>
+{% endblock %}

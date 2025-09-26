@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block page_title %}LLM Settings{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>OpenAI Configuration</h2>
+    <p>Configure AI post generation settings using OpenAI models.</p>
+
+    <div class="form-group">
+        <label for="openai-api-key">OpenAI API Key</label>
+        <input type="password" id="openai-api-key" placeholder="Configure in .env file" readonly>
+        <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
+            Required for AI-powered post generation using GPT models. Add OPENAI_API_KEY to your .env file.
+        </p>
+    </div>
+
+    <div style="background: rgba(102, 126, 234, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #667eea; margin: 1rem 0;">
+        <strong>Setup Instructions:</strong>
+        <ol style="margin: 0.5rem 0 0 1rem;">
+            <li>Sign up for an OpenAI account at <a href="https://platform.openai.com" target="_blank" style="color: #667eea;">platform.openai.com</a></li>
+            <li>Generate an API key in your account settings</li>
+            <li>Add <code>OPENAI_API_KEY=your_key_here</code> to your .env file</li>
+            <li>Restart the application</li>
+        </ol>
+    </div>
+
+    <div class="form-group">
+        <label for="ai-model">AI Model</label>
+        <select id="ai-model" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px;">
+            <option value="gpt-4">GPT-4 (Recommended)</option>
+            <option value="gpt-4-turbo">GPT-4 Turbo (Faster)</option>
+            <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Cost-effective)</option>
+        </select>
+        <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
+            GPT-4 provides the best quality posts, while GPT-3.5 is more cost-effective.
+        </p>
+    </div>
+
+    <div class="form-group">
+        <label for="creativity-level">Creativity Level</label>
+        <input type="range" id="creativity-level" min="0" max="100" value="70" style="width: 100%;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #666; margin-top: 0.25rem;">
+            <span>Conservative (0.3)</span>
+            <span>Balanced (0.7)</span>
+            <span>Creative (1.0)</span>
+        </div>
+        <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
+            Controls the randomness and creativity of generated posts (OpenAI temperature parameter).
+        </p>
+    </div>
+
+    <div class="form-group">
+        <label for="max-tokens">Maximum Tokens</label>
+        <input type="number" id="max-tokens" value="150" min="50" max="500" style="width: 150px;">
+        <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
+            Limits the length of generated posts. Lower values = shorter posts, higher values = more detailed posts.
+        </p>
+    </div>
+
+    <div class="actions">
+        <button class="btn">Save Settings</button>
+        <button class="btn btn-secondary">Test Connection</button>
+    </div>
+</div>
+
+
+<div class="card">
+    <h2>Usage & Monitoring</h2>
+    <p>Monitor your OpenAI API usage and costs.</p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0;">
+        <div style="background: rgba(255, 255, 255, 0.8); padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid rgba(0, 0, 0, 0.1);">
+            <div style="font-size: 2rem; font-weight: bold; color: #667eea;">142</div>
+            <div style="color: #666; font-size: 0.9rem;">Posts Generated</div>
+        </div>
+        <div style="background: rgba(255, 255, 255, 0.8); padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid rgba(0, 0, 0, 0.1);">
+            <div style="font-size: 2rem; font-weight: bold; color: #667eea;">$2.84</div>
+            <div style="color: #666; font-size: 0.9rem;">Estimated Cost</div>
+        </div>
+        <div style="background: rgba(255, 255, 255, 0.8); padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid rgba(0, 0, 0, 0.1);">
+            <div style="font-size: 2rem; font-weight: bold; color: #667eea;">1.2k</div>
+            <div style="color: #666; font-size: 0.9rem;">Tokens Used</div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="monthly-budget">Monthly Budget Alert ($)</label>
+        <input type="number" id="monthly-budget" value="10" min="1" step="0.01" style="width: 150px;">
+        <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
+            Get notified when your estimated monthly usage approaches this amount.
+        </p>
+    </div>
+
+    <div class="actions">
+        <button class="btn btn-secondary">View Usage Details</button>
+        <button class="btn btn-secondary">Export Usage Report</button>
+    </div>
+</div>
+
+<style>
+input[type="text"], input[type="password"], input[type="number"], select, textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: inherit;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+input[readonly] {
+    background: rgba(248, 249, 250, 0.9);
+    color: #6c757d;
+}
+
+h2 {
+    margin-bottom: 0.5rem;
+    color: #1f2937;
+}
+
+input[type="checkbox"] {
+    width: auto;
+}
+
+input[type="range"] {
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+code {
+    background: rgba(0, 0, 0, 0.1);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.9rem;
+}
+
+a {
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+</style>
+{% endblock %}
