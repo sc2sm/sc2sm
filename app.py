@@ -136,6 +136,26 @@ class DatabaseManager:
             )
         ''')
 
+        # CodeRabbit reports table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS coderabbit_reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                from_date TEXT NOT NULL,
+                to_date TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                summary TEXT,
+                commits_analyzed INTEGER,
+                files_changed INTEGER,
+                issues_found INTEGER,
+                score TEXT,
+                report_data TEXT,
+                error_message TEXT,
+                request_id TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP
+            )
+        ''')
+
         conn.commit()
         conn.close()
 
@@ -247,7 +267,7 @@ class DatabaseManager:
         cursor = conn.cursor()
 
         cursor.execute('''
-            DELETE FROM oauth_tokens 
+            DELETE FROM oauth_tokens
             WHERE platform = ? AND user_id = ?
         ''', (platform, user_id))
 
@@ -255,6 +275,141 @@ class DatabaseManager:
         conn.commit()
         conn.close()
         return deleted_count > 0
+
+    def create_coderabbit_request(self, from_date: str, to_date: str, request_id: str = None) -> int:
+        """Create a new CodeRabbit report request with pending status"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            INSERT INTO coderabbit_reports (from_date, to_date, status, request_id)
+            VALUES (?, ?, 'pending', ?)
+        ''', (from_date, to_date, request_id))
+
+        report_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return report_id
+
+    def update_coderabbit_report(self, report_id: int, report_data: Dict, status: str = 'completed') -> bool:
+        """Update a CodeRabbit report with results"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            UPDATE coderabbit_reports
+            SET status = ?, summary = ?, commits_analyzed = ?, files_changed = ?,
+                issues_found = ?, score = ?, report_data = ?, completed_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (
+            status,
+            report_data.get('summary', ''),
+            report_data.get('commits_analyzed', 0),
+            report_data.get('files_changed', 0),
+            report_data.get('issues_found', 0),
+            report_data.get('score', ''),
+            json.dumps(report_data),
+            report_id
+        ))
+
+        updated = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return updated
+
+    def update_coderabbit_report_error(self, report_id: int, error_message: str) -> bool:
+        """Update a CodeRabbit report with error status"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            UPDATE coderabbit_reports
+            SET status = 'error', error_message = ?, completed_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (error_message, report_id))
+
+        updated = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return updated
+
+    def save_coderabbit_report(self, report_data: Dict) -> int:
+        """Save a completed CodeRabbit report to database (legacy method)"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        from_date = report_data.get('date_range', '').split(' to ')[0] if ' to ' in report_data.get('date_range', '') else ''
+        to_date = report_data.get('date_range', '').split(' to ')[1] if ' to ' in report_data.get('date_range', '') else ''
+
+        cursor.execute('''
+            INSERT INTO coderabbit_reports
+            (from_date, to_date, status, summary, commits_analyzed, files_changed, issues_found, score, report_data, completed_at)
+            VALUES (?, ?, 'completed', ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ''', (
+            from_date, to_date,
+            report_data.get('summary', ''),
+            report_data.get('commits_analyzed', 0),
+            report_data.get('files_changed', 0),
+            report_data.get('issues_found', 0),
+            report_data.get('score', ''),
+            json.dumps(report_data)
+        ))
+
+        report_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return report_id
+
+    def get_latest_coderabbit_report(self) -> Optional[Dict]:
+        """Get the most recent completed CodeRabbit report"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT report_data FROM coderabbit_reports
+            WHERE status = 'completed' AND report_data IS NOT NULL
+            ORDER BY completed_at DESC LIMIT 1
+        ''')
+
+        row = cursor.fetchone()
+        conn.close()
+
+        if row and row[0]:
+            return json.loads(row[0])
+        return None
+
+    def get_coderabbit_report_by_id(self, report_id: int) -> Optional[Dict]:
+        """Get a specific CodeRabbit report by ID"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT * FROM coderabbit_reports WHERE id = ?
+        ''', (report_id,))
+
+        row = cursor.fetchone()
+        conn.close()
+
+        if row:
+            columns = [description[0] for description in cursor.description]
+            return dict(zip(columns, row))
+        return None
+
+    def get_coderabbit_reports(self, limit: int = 10) -> List[Dict]:
+        """Get recent CodeRabbit reports"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT * FROM coderabbit_reports
+            ORDER BY created_at DESC LIMIT ?
+        ''', (limit,))
+
+        columns = [description[0] for description in cursor.description]
+        reports = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+        conn.close()
+        return reports
 
 class XOAuthManager:
     def __init__(self):
@@ -581,52 +736,153 @@ def integrations_coderabbit():
 
 @app.route("/api/coderabbit/analyze", methods=["POST"])
 def api_coderabbit_analyze():
-    """Code Rabbit analysis API endpoint"""
+    """Start CodeRabbit analysis - creates request and triggers API call"""
+    import uuid
+    import threading
+    from services.coderabbit import generate_coderabbit_report, validate_report_parameters
+
     try:
         data = request.json
-        project_name = data.get('project_name')
-        branch = data.get('branch', 'main')
         from_date = data.get('from_date')
         to_date = data.get('to_date')
-        detailed = data.get('detailed', False)
 
-        if not project_name or not from_date or not to_date:
-            return jsonify({"error": "Missing required parameters"}), 400
+        if not from_date or not to_date:
+            return jsonify({"error": "Missing required parameters: from_date and to_date"}), 400
 
-        # TODO: Replace with actual Code Rabbit API integration
-        # For now, return mock data for demonstration
-        mock_response = {
-            "summary": f"Analyzed {project_name} repository from {from_date} to {to_date}. Found several areas for improvement including code complexity and documentation coverage.",
-            "commits_analyzed": 23,
-            "files_changed": 45,
-            "issues_found": 8,
-            "score": "85/100",
-            "project_name": project_name,
-            "branch": branch,
-            "date_range": f"{from_date} to {to_date}",
-            "timestamp": datetime.now().isoformat()
+        # Validate parameters
+        is_valid, error_msg, validated_params = validate_report_parameters(data)
+        if not is_valid:
+            return jsonify({"error": error_msg}), 400
+
+        # Create a unique request ID
+        request_id = str(uuid.uuid4())
+
+        # Create database entry with pending status
+        report_id = db.create_coderabbit_request(from_date, to_date, request_id)
+
+        # Start async report generation in background
+        def generate_report_async():
+            try:
+                result = generate_coderabbit_report(
+                    from_date=validated_params['from_date'],
+                    to_date=validated_params['to_date'],
+                    **validated_params.get('optional_params', {})
+                )
+
+                if result.get('status') == 'error':
+                    db.update_coderabbit_report_error(report_id, result.get('error', 'Unknown error'))
+                else:
+                    # Format response data
+                    report_data = result.get('data', {})
+                    response_data = {
+                        "summary": f"Analyzed repository from {from_date} to {to_date}.",
+                        "commits_analyzed": report_data.get('commits_analyzed', 0),
+                        "files_changed": report_data.get('files_changed', 0),
+                        "issues_found": report_data.get('issues_found', 0),
+                        "score": report_data.get('score', 'N/A'),
+                        "date_range": f"{from_date} to {to_date}",
+                        "timestamp": datetime.now().isoformat(),
+                        "raw_data": report_data
+                    }
+
+                    db.update_coderabbit_report(report_id, response_data)
+
+            except Exception as e:
+                db.update_coderabbit_report_error(report_id, str(e))
+
+        # Start background thread
+        thread = threading.Thread(target=generate_report_async)
+        thread.daemon = True
+        thread.start()
+
+        return jsonify({
+            "message": "Report generation started",
+            "report_id": report_id,
+            "request_id": request_id,
+            "status": "pending",
+            "estimated_time": "2-5 minutes"
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/coderabbit/reports", methods=["POST"])
+def api_coderabbit_save_report():
+    """Save a CodeRabbit report to database"""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+
+        report_id = db.save_coderabbit_report(data)
+        return jsonify({"id": report_id, "message": "Report saved successfully"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/coderabbit/reports/latest", methods=["GET"])
+def api_coderabbit_latest_report():
+    """Get the most recent CodeRabbit report from database"""
+    try:
+        # Use the same database as reports routes
+        from database.db import get_db_connection
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT report_data FROM reports
+            WHERE status = 'completed' AND report_data IS NOT NULL
+            ORDER BY created_at DESC LIMIT 1
+        ''')
+
+        row = cursor.fetchone()
+        conn.close()
+
+        if row and row[0]:
+            import json
+            report_data = json.loads(row[0])
+            return jsonify({"data": report_data})
+        else:
+            return jsonify({"data": None, "message": "No reports found"}), 404
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/coderabbit/reports", methods=["GET"])
+def api_coderabbit_list_reports():
+    """Get list of CodeRabbit reports from database"""
+    try:
+        limit = request.args.get('limit', 10, type=int)
+        reports = db.get_coderabbit_reports(limit=limit)
+        return jsonify({"data": reports, "count": len(reports)})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/coderabbit/reports/<int:report_id>/status", methods=["GET"])
+def api_coderabbit_report_status(report_id):
+    """Check the status of a specific CodeRabbit report"""
+    try:
+        report = db.get_coderabbit_report_by_id(report_id)
+        if not report:
+            return jsonify({"error": "Report not found"}), 404
+
+        response = {
+            "id": report['id'],
+            "status": report['status'],
+            "from_date": report['from_date'],
+            "to_date": report['to_date'],
+            "created_at": report['created_at'],
+            "completed_at": report['completed_at']
         }
 
-        if detailed:
-            mock_response["detailed_analysis"] = f"""Code Quality Report for {project_name}:
+        if report['status'] == 'completed' and report['report_data']:
+            response['data'] = json.loads(report['report_data'])
+        elif report['status'] == 'error':
+            response['error_message'] = report['error_message']
 
-✅ Strengths:
-- Good test coverage (78%)
-- Consistent code formatting
-- Well-structured module organization
-
-⚠️ Areas for Improvement:
-- High cyclomatic complexity in 3 files
-- Missing documentation for 12 functions
-- Potential security issues in authentication module
-
-🔍 Recommendations:
-1. Break down complex functions in utils.py
-2. Add JSDoc comments for public APIs
-3. Review authentication token handling
-4. Consider adding integration tests"""
-
-        return jsonify(mock_response)
+        return jsonify(response)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

@@ -8,20 +8,6 @@
     <p>Generate code review insights and summaries using Code Rabbit AI.</p>
 
     <form id="analysis-form" onsubmit="runAnalysis(event)">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-            <div class="form-group">
-                <label for="project-name">Project Name</label>
-                <input type="text" id="project-name" placeholder="e.g., username/repository-name" required>
-                <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
-                    Format: owner/repository (e.g., facebook/react)
-                </p>
-            </div>
-
-            <div class="form-group">
-                <label for="branch">Branch (Optional)</label>
-                <input type="text" id="branch" placeholder="main" value="main">
-            </div>
-        </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
             <div class="form-group">
@@ -35,19 +21,13 @@
             </div>
         </div>
 
-        <div class="form-group" style="margin-bottom: 1.5rem;">
-            <label>
-                <input type="checkbox" id="detailed-analysis" style="margin-right: 0.5rem;">
-                Include detailed file-by-file analysis
-            </label>
-        </div>
 
         <div class="actions">
             <button type="submit" class="btn" id="analyze-btn">
-                <span>🔍 Analyze Repository</span>
+                <span>🔍 Generate New Report</span>
             </button>
-            <button type="button" class="btn btn-secondary" onclick="fillSampleData()">
-                Use Sample Data
+            <button type="button" class="btn btn-secondary" onclick="loadMostRecent()">
+                Load Most Recent Report
             </button>
         </div>
     </form>
@@ -166,6 +146,31 @@ h3 {
     color: #666;
     font-size: 0.9rem;
 }
+
+.loading-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 8px;
+}
+
+.loading-spinner {
+    width: 2rem;
+    height: 2rem;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top: 3px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
 </style>
 
 <script>
@@ -178,16 +183,28 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('from-date').value = weekAgo.toISOString().split('T')[0];
 });
 
-function fillSampleData() {
-    document.getElementById('project-name').value = 'facebook/react';
-    document.getElementById('branch').value = 'main';
-
-    const today = new Date();
-    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-    document.getElementById('to-date').value = today.toISOString().split('T')[0];
-    document.getElementById('from-date').value = weekAgo.toISOString().split('T')[0];
+async function loadMostRecent() {
+    try {
+        const response = await fetch('/api/coderabbit/reports/latest');
+        if (response.ok) {
+            const result = await response.json();
+            if (result.data) {
+                displayResults(result.data);
+                document.getElementById('analysis-results').style.display = 'block';
+            } else {
+                alert('No reports found in database');
+            }
+        } else {
+            const error = await response.json();
+            alert('Failed to load report: ' + (error.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Network error: ' + error.message);
+    }
 }
+
+let currentReportId = null;
+let pollInterval = null;
 
 async function runAnalysis(event) {
     event.preventDefault();
@@ -198,19 +215,17 @@ async function runAnalysis(event) {
     const resultsContent = document.getElementById('results-content');
 
     // Show loading state
-    button.innerHTML = '<span class="loading">Analyzing</span>';
+    button.innerHTML = '<span class="loading">Starting Analysis</span>';
     button.disabled = true;
 
     // Get form data
     const formData = {
-        project_name: document.getElementById('project-name').value,
-        branch: document.getElementById('branch').value || 'main',
         from_date: document.getElementById('from-date').value,
-        to_date: document.getElementById('to-date').value,
-        detailed: document.getElementById('detailed-analysis').checked
+        to_date: document.getElementById('to-date').value
     };
 
     try {
+        // Start the analysis
         const response = await fetch('/api/coderabbit/analyze', {
             method: 'POST',
             headers: {
@@ -222,67 +237,143 @@ async function runAnalysis(event) {
         const result = await response.json();
 
         if (response.ok) {
-            // Show results
-            displayResults(result);
+            currentReportId = result.report_id;
+
+            // Show processing message
+            resultsContent.innerHTML = `
+                <div class="result-summary">
+                    <h3>Analysis In Progress</h3>
+                    <p>${result.message}</p>
+                    <p><strong>Estimated time:</strong> ${result.estimated_time}</p>
+                    <p><strong>Report ID:</strong> ${result.report_id}</p>
+                    <div class="loading-indicator">
+                        <div class="loading-spinner"></div>
+                        <span>Generating report... Please wait.</span>
+                    </div>
+                </div>
+            `;
             resultsDiv.style.display = 'block';
-            addToHistory(formData, result);
+
+            // Start polling for completion
+            startPolling(result.report_id);
+
+            // Update button to show polling state
+            button.innerHTML = '<span class="loading">Report Generating</span>';
         } else {
-            alert('Analysis failed: ' + (result.error || 'Unknown error'));
+            alert('Failed to start analysis: ' + (result.error || 'Unknown error'));
+            button.innerHTML = originalContent;
+            button.disabled = false;
         }
     } catch (error) {
         alert('Network error: ' + error.message);
-    } finally {
-        // Reset button
         button.innerHTML = originalContent;
         button.disabled = false;
     }
 }
 
+function startPolling(reportId) {
+    // Clear any existing polling
+    if (pollInterval) {
+        clearInterval(pollInterval);
+    }
+
+    // Poll every 10 seconds
+    pollInterval = setInterval(async () => {
+        try {
+            const response = await fetch(`/api/coderabbit/reports/${reportId}/status`);
+            const result = await response.json();
+
+            if (response.ok) {
+                if (result.status === 'completed') {
+                    // Report is complete
+                    clearInterval(pollInterval);
+                    displayResults(result.data);
+                    resetAnalyzeButton();
+                    addToHistory({
+                        from_date: result.from_date,
+                        to_date: result.to_date
+                    }, result.data);
+                } else if (result.status === 'error') {
+                    // Report failed
+                    clearInterval(pollInterval);
+                    document.getElementById('results-content').innerHTML = `
+                        <div class="result-summary" style="border-left-color: #dc3545;">
+                            <h3>Analysis Failed</h3>
+                            <p>Error: ${result.error_message || 'Unknown error'}</p>
+                        </div>
+                    `;
+                    resetAnalyzeButton();
+                }
+                // If status is still 'pending', continue polling
+            }
+        } catch (error) {
+            console.error('Polling error:', error);
+        }
+    }, 10000); // Poll every 10 seconds
+}
+
+function resetAnalyzeButton() {
+    const button = document.getElementById('analyze-btn');
+    button.innerHTML = '<span>🔍 Generate New Report</span>';
+    button.disabled = false;
+    currentReportId = null;
+}
+
 function displayResults(result) {
     const resultsContent = document.getElementById('results-content');
 
+    // Handle CodeRabbit API response format
+    let report = '';
+    let reportCount = 0;
+
+    if (result && result.result && result.result.data) {
+        reportCount = result.result.data.length;
+        report = result.result.data.map(item => item.report || '').join('\n\n');
+    }
+
     resultsContent.innerHTML = `
         <div class="result-summary">
-            <h3>Analysis Summary</h3>
-            <p>${result.summary || 'Analysis completed successfully.'}</p>
+            <h3>CodeRabbit Analysis Results</h3>
+            <p>Generated social media optimized pull request summaries.</p>
         </div>
 
         <div class="result-stats">
             <div class="stat-card">
-                <div class="stat-number">${result.commits_analyzed || 0}</div>
-                <div class="stat-label">Commits Analyzed</div>
+                <div class="stat-number">${reportCount}</div>
+                <div class="stat-label">Pull Requests</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">${result.files_changed || 0}</div>
-                <div class="stat-label">Files Changed</div>
+                <div class="stat-number">${report.split('Social Hook:').length - 1}</div>
+                <div class="stat-label">Social Hooks</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">${result.issues_found || 0}</div>
-                <div class="stat-label">Issues Found</div>
+                <div class="stat-number">${report.split('Tech Stack:').length - 1}</div>
+                <div class="stat-label">Tech Stacks</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">${result.score || 'N/A'}</div>
-                <div class="stat-label">Code Quality Score</div>
+                <div class="stat-number">${Math.round(report.length / 100)}</div>
+                <div class="stat-label">Content Score</div>
             </div>
         </div>
 
-        ${result.detailed_analysis ? `
+        ${report ? `
             <div style="margin-top: 1.5rem;">
-                <h4>Detailed Analysis</h4>
-                <pre style="background: #f8f9fa; padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.9rem;">${result.detailed_analysis}</pre>
+                <h4>Social Media Ready Content</h4>
+                <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; white-space: pre-wrap; line-height: 1.6; font-size: 0.95rem; border-left: 4px solid #667eea;">${report}</div>
             </div>
         ` : ''}
 
         <div class="actions" style="margin-top: 1.5rem;">
-            <button class="btn btn-secondary" onclick="generateSocialPost()">
-                Generate Social Post
+            <button class="btn btn-secondary" onclick="copyToClipboard()">
+                📋 Copy Content
             </button>
-            <button class="btn btn-secondary" onclick="exportResults()">
-                Export Results
+            <button class="btn btn-secondary" onclick="generateSocialPost()">
+                📱 Create Post
             </button>
         </div>
     `;
 }
+
 
 function addToHistory(formData, result) {
     const historyDiv = document.getElementById('analysis-history');
@@ -296,7 +387,7 @@ function addToHistory(formData, result) {
     historyItem.className = 'history-item';
     historyItem.innerHTML = `
         <div>
-            <strong>${formData.project_name}</strong>
+            <strong>CodeRabbit Report</strong>
             <div class="history-meta">
                 ${formData.from_date} to ${formData.to_date} • ${timestamp}
             </div>
@@ -309,6 +400,17 @@ function addToHistory(formData, result) {
     `;
 
     historyDiv.insertBefore(historyItem, historyDiv.firstChild);
+}
+
+function copyToClipboard() {
+    const reportContent = document.querySelector('[style*="white-space: pre-wrap"]');
+    if (reportContent) {
+        navigator.clipboard.writeText(reportContent.textContent).then(() => {
+            alert('📋 Content copied to clipboard!');
+        }).catch(() => {
+            alert('Failed to copy content to clipboard');
+        });
+    }
 }
 
 function generateSocialPost() {
