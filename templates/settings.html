@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - SC2SM{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-cog"></i> Settings</h1>
+</div>
+
+<div class="row">
+    <!-- User Profile -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-user"></i> Profile Settings</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('main.settings') }}">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" value="{{ current_user.username }}" readonly>
+                        <div class="form-text">Username is managed by GitHub</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" value="{{ current_user.email or 'Not provided' }}" readonly>
+                        <div class="form-text">Email is managed by GitHub</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="avatar" class="form-label">Avatar</label>
+                        <div class="d-flex align-items-center">
+                            <img src="{{ current_user.avatar_url or url_for('static', filename='img/default-avatar.png') }}" 
+                                 alt="Avatar" class="rounded-circle me-3" width="64" height="64">
+                            <div>
+                                <p class="mb-0">Avatar is managed by GitHub</p>
+                                <small class="text-muted">Update your GitHub profile to change this</small>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Posting Preferences -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-robot"></i> Posting Preferences</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('main.settings') }}">
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="auto_post_enabled" 
+                                   name="auto_post_enabled" {{ 'checked' if current_user.auto_post_enabled }}>
+                            <label class="form-check-label" for="auto_post_enabled">
+                                Enable Auto-Posting
+                            </label>
+                        </div>
+                        <div class="form-text">Automatically post when new commits are detected</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="post_tone" class="form-label">Post Tone</label>
+                        <select class="form-select" id="post_tone" name="post_tone">
+                            <option value="professional" {{ 'selected' if current_user.post_tone == 'professional' }}>Professional</option>
+                            <option value="casual" {{ 'selected' if current_user.post_tone == 'casual' }}>Casual</option>
+                            <option value="technical" {{ 'selected' if current_user.post_tone == 'technical' }}>Technical</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="include_hashtags" 
+                                   name="include_hashtags" {{ 'checked' if current_user.include_hashtags }}>
+                            <label class="form-check-label" for="include_hashtags">
+                                Include Hashtags
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="max_posts_per_day" class="form-label">Max Posts Per Day</label>
+                        <input type="number" class="form-control" id="max_posts_per_day" 
+                               name="max_posts_per_day" value="{{ current_user.max_posts_per_day }}" min="1" max="50">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Save Preferences</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Social Media Connections -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fab fa-twitter"></i> Social Media Connections</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div class="d-flex align-items-center">
+                        <i class="fab fa-twitter fa-2x text-primary me-3"></i>
+                        <div>
+                            <h6 class="mb-0">Twitter</h6>
+                            <small class="text-muted">Not connected</small>
+                        </div>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm" disabled>
+                        <i class="fas fa-link"></i> Connect
+                    </button>
+                </div>
+                
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div class="d-flex align-items-center">
+                        <i class="fab fa-linkedin fa-2x text-info me-3"></i>
+                        <div>
+                            <h6 class="mb-0">LinkedIn</h6>
+                            <small class="text-muted">Not connected</small>
+                        </div>
+                    </div>
+                    <button class="btn btn-outline-info btn-sm" disabled>
+                        <i class="fas fa-link"></i> Connect
+                    </button>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    Social media connections will be available in a future update.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Account Actions -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Account Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6>Export Data</h6>
+                    <p class="text-muted">Download all your posts and repository data</p>
+                    <button class="btn btn-outline-secondary btn-sm" disabled>
+                        <i class="fas fa-download"></i> Export Data
+                    </button>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Delete Account</h6>
+                    <p class="text-muted">Permanently delete your account and all data</p>
+                    <button class="btn btn-outline-danger btn-sm" disabled>
+                        <i class="fas fa-trash"></i> Delete Account
+                    </button>
+                </div>
+                
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Account management features will be available in a future update.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Webhook Information -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-webhook"></i> Webhook Configuration</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    To receive automatic notifications for new commits, add this webhook URL to your GitHub repositories:
+                </p>
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" value="{{ request.url_root }}webhook" readonly id="webhook-url">
+                    <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('webhook-url')">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                </div>
+                
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> How to set up webhooks:</h6>
+                    <ol class="mb-0">
+                        <li>Go to your repository settings on GitHub</li>
+                        <li>Navigate to "Webhooks" section</li>
+                        <li>Click "Add webhook"</li>
+                        <li>Paste the URL above</li>
+                        <li>Select "Just the push event"</li>
+                        <li>Click "Add webhook"</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function copyToClipboard(elementId) {
+    const element = document.getElementById(elementId);
+    element.select();
+    element.setSelectionRange(0, 99999); // For mobile devices
+    document.execCommand('copy');
+    
+    // Show feedback
+    const button = element.nextElementSibling;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+    button.classList.remove('btn-outline-secondary');
+    button.classList.add('btn-success');
+    
+    setTimeout(() => {
+        button.innerHTML = originalText;
+        button.classList.remove('btn-success');
+        button.classList.add('btn-outline-secondary');
+    }, 2000);
+}
+</script>
+{% endblock %}
