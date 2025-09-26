@@ -1,7 +1,8 @@
 from app import app
 
-# This is the WSGI entry point for Vercel
-application = app
+# Vercel handler function
+def handler(request, context):
+    return app
 
-if __name__ == "__main__":
-    app.run()
+# WSGI application entry point
+application = app
