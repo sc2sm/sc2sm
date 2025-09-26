@@ -1,11 +1,18 @@
 """
 Database operations for CodeRabbit reports
+
+This module provides functions for managing SQLite database operations including:
+- Database initialization and schema creation
+- Report storage and retrieval
+- Metrics parsing and storage
+- Query operations with filtering and pagination
 """
 
 import os
 import sqlite3
 import json
 from datetime import datetime, date
+from typing import Dict, Any, List, Optional, Tuple
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,8 +21,16 @@ load_dotenv()
 DATABASE_PATH = os.getenv("DATABASE_PATH", "reports.db")
 
 
-def init_database():
-    """Initialize the SQLite database with required tables"""
+def init_database() -> None:
+    """
+    Initialize the SQLite database with required tables.
+
+    Creates the following tables if they don't exist:
+    - reports: Main table for storing report metadata and data
+    - report_metrics: Table for storing structured metrics extracted from reports
+
+    The function is idempotent and can be called multiple times safely.
+    """
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
 
@@ -56,35 +71,60 @@ def init_database():
     conn.close()
 
 
-def get_db_connection():
-    """Get a database connection"""
+def get_db_connection() -> sqlite3.Connection:
+    """
+    Get a database connection with row factory enabled.
+    
+    Returns:
+        sqlite3.Connection: Database connection with row factory for named column access
+    """
     conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row  # This enables column access by name
     return conn
 
 
-def json_serializer(obj):
-    """JSON serializer for datetime objects"""
+def json_serializer(obj: Any) -> str:
+    """
+    JSON serializer for datetime objects.
+    
+    Args:
+        obj: Object to serialize
+        
+    Returns:
+        str: ISO format string for datetime objects
+        
+    Raises:
+        TypeError: If object type is not supported
+    """
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
 
-def save_report_to_db(organization, from_date, to_date, report_data, status="completed", error_message=None, **kwargs):
+def save_report_to_db(organization: str, from_date: str, to_date: str, 
+                     report_data: Optional[Dict[str, Any]], status: str = "completed", 
+                     error_message: Optional[str] = None, **kwargs: Any) -> int:
     """
-    Save a report to the database
+    Save a report to the database.
 
     Args:
-        organization (str): Organization identifier
-        from_date (str): Start date
-        to_date (str): End date
-        report_data (dict): Report data from CodeRabbit
-        status (str): Report status
-        error_message (str): Error message if any
-        **kwargs: Additional parameters used in the request
+        organization: Organization identifier
+        from_date: Start date in YYYY-MM-DD format
+        to_date: End date in YYYY-MM-DD format
+        report_data: Report data from CodeRabbit (can be None for failed reports)
+        status: Report status (default: "completed")
+        error_message: Error message if report generation failed
+        **kwargs: Additional parameters used in the request including:
+            - scheduleRange: Schedule range
+            - prompt: Custom prompt
+            - promptTemplate: Prompt template
+            - parameters: Filter parameters
+            - groupBy: Primary grouping
+            - subgroupBy: Secondary grouping
+            - orgId: Organization ID
 
     Returns:
-        int: Report ID
+        int: The ID of the created report record
     """
     conn = get_db_connection()
     cursor = conn.cursor()

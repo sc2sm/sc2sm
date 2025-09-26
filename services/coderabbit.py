@@ -1,10 +1,15 @@
 """
 CodeRabbit API integration service
+
+This module provides functions to interact with the CodeRabbit API for generating
+code review reports. It handles authentication, request formatting, error handling,
+and parameter validation.
 """
 
 import os
 import requests
 import logging
+from typing import Dict, Any, Tuple, Optional
 from dotenv import load_dotenv
 
 # Set up logging
@@ -14,21 +19,37 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # CodeRabbit Configuration
-CODERABBIT_API_KEY = os.getenv("CODERABBIT_API_KEY")
-CODERABBIT_API_BASE = "https://api.coderabbit.ai/api/v1"
+CODERABBIT_API_KEY: Optional[str] = os.getenv("CODERABBIT_API_KEY")
+CODERABBIT_API_BASE: str = "https://api.coderabbit.ai/api/v1"
 
 
-def generate_coderabbit_report(from_date, to_date, **kwargs):
+def generate_coderabbit_report(from_date: str, to_date: str, **kwargs: Any) -> Dict[str, Any]:
     """
-    Generate a CodeRabbit report with the specified parameters
+    Generate a CodeRabbit report with the specified parameters.
+
+    This function makes a POST request to the CodeRabbit API to generate a code
+    review report for the specified date range. It handles authentication,
+    request formatting, and error responses.
 
     Args:
-        from_date (str): Start date in YYYY-MM-DD format
-        to_date (str): End date in YYYY-MM-DD format
-        **kwargs: Additional CodeRabbit API parameters
+        from_date: Start date in YYYY-MM-DD format
+        to_date: End date in YYYY-MM-DD format
+        **kwargs: Additional CodeRabbit API parameters including:
+            - scheduleRange (str): Schedule range for the report
+            - prompt (str): Custom prompt for analysis
+            - promptTemplate (str): Template name for prompts
+            - parameters (list): Array of filter parameters
+            - groupBy (str): Primary grouping field
+            - subgroupBy (str): Secondary grouping field
+            - orgId (str): Organization ID
 
     Returns:
-        dict: API response or error information
+        Dict containing either:
+        - Success: {"data": report_data, "status": "success"}
+        - Error: {"error": error_message, "details": error_details, "status": "error"}
+
+    Raises:
+        No exceptions are raised; all errors are returned in the response dict.
     """
     if not CODERABBIT_API_KEY:
         return {"error": "CODERABBIT_API_KEY not configured", "status": "error"}
@@ -95,15 +116,27 @@ def generate_coderabbit_report(from_date, to_date, **kwargs):
         return {"error": f"Unexpected error: {str(e)}", "status": "error"}
 
 
-def validate_report_parameters(data):
+def validate_report_parameters(data: Dict[str, Any]) -> Tuple[bool, Optional[str], Optional[Dict[str, Any]]]:
     """
-    Validate CodeRabbit report parameters
+    Validate CodeRabbit report parameters.
+
+    This function validates the input parameters for generating a CodeRabbit report.
+    It checks for required fields, date format validation, and date range logic.
 
     Args:
-        data (dict): Request data to validate
+        data: Dictionary containing the request parameters to validate
 
     Returns:
-        tuple: (is_valid, error_message, validated_params)
+        Tuple containing:
+        - bool: True if validation passes, False otherwise
+        - Optional[str]: Error message if validation fails, None if successful
+        - Optional[Dict]: Validated and formatted parameters if successful, None if failed
+
+    Validation Rules:
+        - 'from'/'from_date' and 'to'/'to_date' are required
+        - Dates must be in YYYY-MM-DD format
+        - from_date must be before to_date
+        - Optional parameters are passed through if present
     """
     from datetime import datetime
 
