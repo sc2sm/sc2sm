@@ -25,11 +25,23 @@ def init_database() -> None:
     """
     Initialize the SQLite database with required tables.
 
+    This function creates the database schema for CodeRabbit reports storage.
+    It's designed to be idempotent and can be called multiple times safely.
+
     Creates the following tables if they don't exist:
     - reports: Main table for storing report metadata and data
+      * Contains report parameters, status, timestamps, and raw report data
+      * Supports filtering by organization, date range, and status
     - report_metrics: Table for storing structured metrics extracted from reports
+      * Stores individual metrics with their values and metadata
+      * Linked to reports via foreign key relationship
+      * Enables efficient querying of specific metrics
 
-    The function is idempotent and can be called multiple times safely.
+    Database Design:
+    - Uses SQLite for simplicity and portability
+    - Implements proper foreign key relationships
+    - Includes timestamps for audit trails
+    - Supports JSON storage for flexible data structures
     """
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
@@ -73,10 +85,21 @@ def init_database() -> None:
 
 def get_db_connection() -> sqlite3.Connection:
     """
-    Get a database connection with row factory enabled.
+    Get a database connection with row factory enabled for named column access.
+    
+    This function creates a SQLite connection with the row factory enabled,
+    which allows accessing columns by name instead of index. This makes
+    the code more readable and maintainable.
     
     Returns:
-        sqlite3.Connection: Database connection with row factory for named column access
+        sqlite3.Connection: Database connection configured for named column access
+        
+    Example:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name FROM users WHERE id = ?", (user_id,))
+        row = cursor.fetchone()
+        user_name = row['name']  # Access by column name
     """
     conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row  # This enables column access by name
@@ -105,26 +128,41 @@ def save_report_to_db(organization: str, from_date: str, to_date: str,
                      report_data: Optional[Dict[str, Any]], status: str = "completed", 
                      error_message: Optional[str] = None, **kwargs: Any) -> int:
     """
-    Save a report to the database.
+    Save a CodeRabbit report to the database with comprehensive metadata.
+
+    This function stores both successful and failed reports, including all
+    parameters used in the request. It handles JSON serialization of complex
+    data structures and provides detailed audit trails.
 
     Args:
-        organization: Organization identifier
+        organization: Organization identifier for the report
         from_date: Start date in YYYY-MM-DD format
         to_date: End date in YYYY-MM-DD format
         report_data: Report data from CodeRabbit (can be None for failed reports)
-        status: Report status (default: "completed")
+        status: Report status ("completed", "failed", "pending")
         error_message: Error message if report generation failed
         **kwargs: Additional parameters used in the request including:
-            - scheduleRange: Schedule range
-            - prompt: Custom prompt
-            - promptTemplate: Prompt template
-            - parameters: Filter parameters
-            - groupBy: Primary grouping
-            - subgroupBy: Secondary grouping
-            - orgId: Organization ID
+            - scheduleRange: Schedule range for the report
+            - prompt: Custom prompt used for analysis
+            - promptTemplate: Template name for prompts
+            - parameters: Filter parameters as JSON array
+            - groupBy: Primary grouping field
+            - subgroupBy: Secondary grouping field
+            - orgId: Organization ID from CodeRabbit
 
     Returns:
         int: The ID of the created report record
+
+    Database Schema:
+        The function inserts into the 'reports' table with the following fields:
+        - organization, from_date, to_date: Core report identification
+        - schedule_range, prompt, prompt_template: Analysis parameters
+        - parameters: JSON array of filter parameters
+        - group_by, subgroup_by, org_id: Grouping and organization settings
+        - status: Current report status
+        - report_data: Full report data as JSON (for successful reports)
+        - error_message: Error details (for failed reports)
+        - created_at: Automatic timestamp
     """
     conn = get_db_connection()
     cursor = conn.cursor()

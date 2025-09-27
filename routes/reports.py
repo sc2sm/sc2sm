@@ -1,5 +1,26 @@
 """
-Report-related routes for CodeRabbit API
+Report-related routes for CodeRabbit API integration.
+
+This module provides Flask Blueprint routes for managing CodeRabbit reports
+including generation, retrieval, listing, and metrics extraction. It handles
+the complete lifecycle of code analysis reports from creation to storage.
+
+Key Features:
+- Asynchronous report generation with background processing
+- Comprehensive parameter validation and error handling
+- Database integration for report persistence
+- Metrics extraction and structured storage
+- RESTful API design with proper HTTP status codes
+
+Routes:
+- POST /reports/generate: Generate new CodeRabbit reports
+- GET /reports/{id}: Retrieve specific report by ID
+- GET /reports: List reports with filtering and pagination
+- GET /reports/{id}/metrics: Get metrics for a specific report
+- GET /reports/bottom5: Get the 5 most recent reports
+
+Author: Source2Social Team
+Version: 1.0.0
 """
 
 from datetime import datetime
@@ -9,14 +30,26 @@ from database.db import (
     get_report_metrics, parse_and_store_metrics, get_db_connection
 )
 
-# Create Blueprint for reports routes
+# Create Blueprint for reports routes with URL prefix
 reports_bp = Blueprint('reports', __name__)
 
 
 @reports_bp.route("/reports/generate", methods=["POST"])
 def generate_report():
     """
-    Generate a CodeRabbit report and store it in the database
+    Generate a CodeRabbit report and store it in the database.
+
+    This endpoint initiates a CodeRabbit code analysis request. It validates
+    input parameters, generates the report using the CodeRabbit API, and
+    stores the results in the database with proper error handling.
+
+    Request Processing:
+    1. Validates required parameters (from_date, to_date)
+    2. Validates optional parameters and formats them for CodeRabbit API
+    3. Calls CodeRabbit API to generate the report
+    4. Stores successful reports with metrics extraction
+    5. Stores failed reports with error messages
+    6. Returns appropriate HTTP status codes and response data
 
     Expected JSON payload:
     {
@@ -31,6 +64,12 @@ def generate_report():
         "subgroupBy": "string",                  # optional: Secondary grouping
         "orgId": "string"                        # optional: Organization ID
     }
+
+    Returns:
+        JSON response with report ID, status, and metadata
+        - 201 Created: Report generated successfully
+        - 400 Bad Request: Invalid parameters
+        - 500 Internal Server Error: CodeRabbit API error or system error
     """
     from services.coderabbit import generate_coderabbit_report, validate_report_parameters
 
@@ -104,7 +143,28 @@ def generate_report():
 
 @reports_bp.route("/reports/<int:report_id>", methods=["GET"])
 def get_report(report_id):
-    """Get a specific report by ID"""
+    """
+    Retrieve a specific report by its ID with associated metrics.
+
+    This endpoint fetches a complete report record including all metadata,
+    report data, and associated metrics. It's used for detailed report
+    viewing and analysis.
+
+    Args:
+        report_id: Integer ID of the report to retrieve
+
+    Returns:
+        JSON response containing:
+        - Complete report metadata (dates, parameters, status)
+        - Full report data from CodeRabbit
+        - Associated metrics extracted from the report
+        - Error message if the report failed
+
+    HTTP Status Codes:
+        - 200 OK: Report found and returned successfully
+        - 404 Not Found: Report with specified ID does not exist
+        - 500 Internal Server Error: Database or system error
+    """
     try:
         report = get_report_by_id(report_id)
         if not report:
@@ -119,15 +179,36 @@ def get_report(report_id):
 @reports_bp.route("/reports", methods=["GET"])
 def list_all_reports():
     """
-    List all reports with optional filtering
+    List all reports with comprehensive filtering and pagination support.
 
-    Query parameters:
-    - organization: Filter by organization
-    - status: Filter by status (pending, completed, failed)
-    - from_date: Filter reports generated after this date
-    - to_date: Filter reports generated before this date
-    - limit: Limit number of results (default 50)
-    - offset: Offset for pagination (default 0)
+    This endpoint provides a flexible way to query reports with multiple
+    filter options and pagination. It's designed for dashboard views,
+    report management interfaces, and API integrations.
+
+    Query Parameters:
+        - organization (str): Filter by organization identifier
+        - status (str): Filter by report status ("pending", "completed", "failed")
+        - from_date (str): Filter reports created after this date (YYYY-MM-DD)
+        - to_date (str): Filter reports created before this date (YYYY-MM-DD)
+        - limit (int): Maximum number of results to return (default: 50, max: 100)
+        - offset (int): Number of results to skip for pagination (default: 0)
+
+    Returns:
+        JSON response containing:
+        - reports: Array of report objects with metadata
+        - total_count: Total number of reports matching filters
+        - limit: Applied limit parameter
+        - offset: Applied offset parameter
+        - has_more: Boolean indicating if more results are available
+
+    Example Usage:
+        GET /reports?organization=my-org&status=completed&limit=10&offset=0
+        GET /reports?from_date=2024-01-01&to_date=2024-12-31
+
+    HTTP Status Codes:
+        - 200 OK: Reports retrieved successfully
+        - 400 Bad Request: Invalid query parameters
+        - 500 Internal Server Error: Database or system error
     """
     try:
         # Get query parameters

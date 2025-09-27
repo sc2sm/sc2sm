@@ -1,7 +1,29 @@
 """
 Source2Social - Flask backend for turning GitHub commits into social media posts
+
+This is the main application file for Source2Social, a tool that automatically
+transforms GitHub commits into engaging social media posts. The application
+provides:
+
+- GitHub webhook integration for real-time commit processing
+- AI-powered post generation using OpenAI's GPT models
+- Social media posting capabilities (Twitter/X)
+- CodeRabbit integration for enhanced code analysis
+- Web dashboard for managing generated posts
+- OAuth authentication for social media accounts
+
+Key Features:
+- Automatic commit-to-post conversion
+- Editable post templates and content
+- Multi-platform social media support
+- Code analysis and reporting
+- User-friendly web interface
+
+Author: Source2Social Team
+Version: 1.0.0
 """
 
+# Standard library imports
 import os
 import sqlite3
 import json
@@ -11,12 +33,15 @@ from datetime import datetime
 from typing import Optional, Dict, List
 from dataclasses import dataclass
 
+# Third-party imports
 import requests
 try:
-    import tweepy
+    import tweepy  # Twitter API library
 except ImportError as e:
     print(f"Warning: tweepy not available: {e}")
     tweepy = None
+
+# Flask framework imports
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, session
 import json as json_module
 from dotenv import load_dotenv
@@ -24,32 +49,55 @@ from openai import OpenAI
 from requests_oauthlib import OAuth2Session
 from urllib.parse import urlencode
 
+# Load environment variables from .env file
 load_dotenv()
 
-# Initialize Flask app
+# =============================================================================
+# FLASK APPLICATION INITIALIZATION
+# =============================================================================
+
+# Initialize Flask application with configuration
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret-key")
 
-# Import and register Blueprints
+# Import and register Blueprints for modular routing
 from routes.reports import reports_bp
 app.register_blueprint(reports_bp)
 
-# Add custom Jinja2 filter
+# Add custom Jinja2 filter for JSON parsing in templates
 @app.template_filter('fromjson')
 def fromjson_filter(value):
+    """
+    Custom Jinja2 filter to parse JSON strings in templates.
+    
+    Args:
+        value: JSON string to parse
+        
+    Returns:
+        Parsed JSON object
+    """
     return json_module.loads(value)
 
-# Configuration
+# =============================================================================
+# ENVIRONMENT CONFIGURATION
+# =============================================================================
+
+# GitHub webhook configuration
 GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET")
+
+# OpenAI API configuration for AI-powered post generation
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# Twitter API v1.1 credentials (legacy authentication)
 TWITTER_API_KEY = os.getenv("TWITTER_API_KEY")
 TWITTER_API_SECRET = os.getenv("TWITTER_API_SECRET")
 TWITTER_ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
 TWITTER_ACCESS_TOKEN_SECRET = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
-# For Vercel, use /tmp directory for temporary storage
+
+# Database configuration - use /tmp for Vercel deployment, local file otherwise
 DATABASE_PATH = os.getenv("DATABASE_PATH", "/tmp/sc2sm.db" if os.getenv("VERCEL") else "sc2sm.db")
 
-# X OAuth Configuration
+# X (Twitter) OAuth 2.0 configuration for modern authentication
 X_CLIENT_ID = os.getenv("X_CLIENT_ID")
 X_CLIENT_SECRET = os.getenv("X_CLIENT_SECRET")
 X_REDIRECT_URI = os.getenv("X_REDIRECT_URI", "http://localhost:5000/oauth/x/callback")
@@ -57,7 +105,11 @@ X_AUTHORIZATION_BASE_URL = "https://twitter.com/i/oauth2/authorize"
 X_TOKEN_URL = "https://api.twitter.com/2/oauth2/token"
 X_SCOPE = ["tweet.read", "tweet.write", "users.read", "offline.access"]
 
-# Initialize OpenAI client
+# =============================================================================
+# AI CLIENT INITIALIZATION
+# =============================================================================
+
+# Initialize OpenAI client for AI-powered post generation
 openai_client = None
 if OPENAI_API_KEY and OPENAI_API_KEY != "your_openai_api_key_here":
     try:
@@ -66,8 +118,30 @@ if OPENAI_API_KEY and OPENAI_API_KEY != "your_openai_api_key_here":
         print(f"Warning: Could not initialize OpenAI client: {e}")
         openai_client = None
 
+# =============================================================================
+# DATA MODELS
+# =============================================================================
+
 @dataclass
 class CommitData:
+    """
+    Data class representing commit information extracted from GitHub webhooks.
+    
+    This class structures the commit data that will be used to generate
+    social media posts. It includes all relevant metadata about the commit
+    such as author, message, files changed, and repository information.
+    
+    Attributes:
+        author_name: Name of the commit author
+        commit_message: The commit message text
+        timestamp: When the commit was made
+        added_files: List of files added in this commit
+        modified_files: List of files modified in this commit
+        removed_files: List of files removed in this commit
+        repository_name: Name of the GitHub repository
+        branch: Branch name where the commit was made
+        sha: Unique commit hash identifier
+    """
     author_name: str
     commit_message: str
     timestamp: str
@@ -78,17 +152,49 @@ class CommitData:
     branch: str
     sha: str
 
+# =============================================================================
+# DATABASE MANAGEMENT
+# =============================================================================
+
 class DatabaseManager:
+    """
+    Manages SQLite database operations for Source2Social.
+    
+    This class handles all database interactions including:
+    - Database initialization and schema creation
+    - Post storage and retrieval
+    - OAuth token management
+    - CodeRabbit report storage
+    - User session management
+    
+    The database uses SQLite for simplicity and portability across
+    different deployment environments.
+    """
+    
     def __init__(self, db_path: str):
+        """
+        Initialize the database manager.
+        
+        Args:
+            db_path: Path to the SQLite database file
+        """
         self.db_path = db_path
         self.init_database()
 
     def init_database(self):
-        """Initialize database tables"""
+        """
+        Initialize database tables with proper schema.
+        
+        Creates the following tables if they don't exist:
+        - posts: Stores generated social media posts
+        - repositories: Repository configuration settings
+        - oauth_tokens: OAuth authentication tokens
+        - coderabbit_reports: CodeRabbit analysis reports
+        """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        # Posts table
+        # Posts table - stores generated social media posts from commits
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS posts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -160,7 +266,16 @@ class DatabaseManager:
         conn.close()
 
     def save_post(self, commit_data: CommitData, generated_post: str) -> int:
-        """Save a generated post to database"""
+        """
+        Save a generated social media post to the database.
+        
+        Args:
+            commit_data: CommitData object containing commit information
+            generated_post: The AI-generated social media post content
+            
+        Returns:
+            int: The ID of the saved post record
+        """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
@@ -185,7 +300,15 @@ class DatabaseManager:
         return post_id
 
     def get_posts(self, status: Optional[str] = None) -> List[Dict]:
-        """Get posts, optionally filtered by status"""
+        """
+        Retrieve posts from the database with optional status filtering.
+        
+        Args:
+            status: Optional status filter ('draft', 'posted', 'edited', etc.)
+            
+        Returns:
+            List[Dict]: List of post records as dictionaries
+        """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
@@ -483,12 +606,31 @@ class XOAuthManager:
         
         return response.json()
 
+# =============================================================================
+# AI POST GENERATION
+# =============================================================================
+
 class PostGenerator:
+    """
+    Generates social media posts from commit data using AI.
+    
+    This class handles the transformation of GitHub commit information
+    into engaging social media posts using OpenAI's GPT models. It
+    includes template management, content generation, and platform-specific
+    formatting for different social media platforms.
+    """
+    
     def __init__(self):
+        """Initialize the post generator with prompt templates."""
         self.prompt_template = self._load_prompt_template()
 
     def _load_prompt_template(self) -> str:
-        """Load the prompt template from prompt.md"""
+        """
+        Load the AI prompt template from prompt.md file.
+        
+        Returns:
+            str: The prompt template for AI post generation
+        """
         try:
             with open('prompt.md', 'r') as f:
                 return f.read()
@@ -515,7 +657,19 @@ Tone:
 - No hashtags, unless organic"""
 
     def generate_post(self, commit_data: CommitData) -> str:
-        """Generate a social media post from commit data"""
+        """
+        Generate a social media post from commit data using AI.
+        
+        This method takes commit information and uses OpenAI's GPT models
+        to generate engaging social media content. It includes fallback
+        mechanisms if the AI service is unavailable.
+        
+        Args:
+            commit_data: CommitData object containing commit information
+            
+        Returns:
+            str: Generated social media post content
+        """
 
         # Format file changes for the prompt
         files_summary = []
@@ -782,10 +936,26 @@ Generate a single {platform} post:"""
                 fallback = fallback[:config['char_limit']-3] + "..."
             return fallback
 
+# =============================================================================
+# SOCIAL MEDIA POSTING
+# =============================================================================
+
 class TwitterPoster:
+    """
+    Handles posting content to Twitter/X using the Twitter API.
+    
+    This class manages Twitter API authentication and posting functionality.
+    It supports both Twitter API v1.1 (legacy) and v2 (modern) endpoints
+    with comprehensive error handling and credential validation.
+    """
+    
     def __init__(self):
-        print("Initializing TwitterPoster with hardcoded Twitter API v1.1 credentials...")
-        print(f"tweepy available: {tweepy is not None}")
+        """
+        Initialize Twitter API client with authentication.
+        
+        Sets up both v1.1 and v2 API clients for maximum compatibility.
+        Includes detailed credential validation and error reporting.
+        """
 
         self.client = None
         self.api = None
@@ -855,7 +1025,18 @@ class TwitterPoster:
             print(f"   TWITTER_ACCESS_TOKEN_SECRET: {'✅' if TWITTER_ACCESS_TOKEN_SECRET else '❌'}")
 
     def post_tweet(self, content: str) -> bool:
-        """Post a tweet and return success status"""
+        """
+        Post a tweet to Twitter/X.
+        
+        Attempts to post using Twitter API v2 first, then falls back to v1.1
+        if needed. Includes comprehensive error handling and logging.
+        
+        Args:
+            content: The tweet content to post
+            
+        Returns:
+            bool: True if posting was successful, False otherwise
+        """
         if not self.client and not self.api:
             print("Twitter API not configured - missing API credentials")
             return False
@@ -893,14 +1074,35 @@ class TwitterPoster:
             traceback.print_exc()
             return False
 
-# Initialize components
+# =============================================================================
+# COMPONENT INITIALIZATION
+# =============================================================================
+
+# Initialize core application components
 db = DatabaseManager(DATABASE_PATH)
 post_generator = PostGenerator()
 twitter_poster = TwitterPoster()
 x_oauth_manager = XOAuthManager()
 
+# =============================================================================
+# WEBHOOK SECURITY
+# =============================================================================
+
 def verify_github_signature(payload_body: bytes, signature_header: str) -> bool:
-    """Verify GitHub webhook signature"""
+    """
+    Verify GitHub webhook signature for security.
+    
+    This function validates that incoming webhook requests are actually
+    from GitHub by verifying the HMAC-SHA256 signature using the configured
+    webhook secret.
+    
+    Args:
+        payload_body: Raw request body bytes
+        signature_header: X-Hub-Signature-256 header value
+        
+    Returns:
+        bool: True if signature is valid, False otherwise
+    """
     if not GITHUB_WEBHOOK_SECRET or GITHUB_WEBHOOK_SECRET == "your_github_webhook_secret_here":
         print("⚠️  Skipping signature verification (no secret configured)")
         return True  # Skip verification if no secret is set
@@ -917,9 +1119,23 @@ def verify_github_signature(payload_body: bytes, signature_header: str) -> bool:
 
     return hmac.compare_digest(expected_signature, signature_header)
 
+# =============================================================================
+# WEB APPLICATION ROUTES
+# =============================================================================
+
 @app.route("/webhook/github", methods=["POST"])
 def github_webhook():
-    """Handle GitHub webhook events"""
+    """
+    Handle GitHub webhook events for commit processing.
+    
+    This endpoint receives push events from GitHub repositories and processes
+    them to generate social media posts. It validates the webhook signature,
+    extracts commit data, generates posts using AI, and stores them in the
+    database.
+    
+    Returns:
+        JSON response with processing status
+    """
 
     # Verify signature
     signature = request.headers.get('X-Hub-Signature-256')
@@ -966,12 +1182,25 @@ def github_webhook():
 
 @app.route("/")
 def landing():
-    """Landing page"""
+    """
+    Serve the landing page.
+    
+    Returns:
+        Rendered landing page template
+    """
     return render_template("landing.html")
 
 @app.route("/dashboard")
 def dashboard():
-    """Main dashboard showing recent posts"""
+    """
+    Main dashboard displaying generated posts.
+    
+    Shows all generated social media posts with options to edit,
+    publish, or manage them.
+    
+    Returns:
+        Rendered dashboard template with posts data
+    """
     posts = db.get_posts()
     return render_template("dashboard.html", posts=posts)
 
@@ -1082,9 +1311,28 @@ def social_generator():
     """Social media generator page"""
     return render_template("social_generator.html")
 
+# =============================================================================
+# API ROUTES
+# =============================================================================
+
 @app.route("/api/coderabbit/analyze", methods=["POST"])
 def api_coderabbit_analyze():
-    """Start CodeRabbit analysis - creates request and triggers API call"""
+    """
+    Start CodeRabbit analysis - creates request and triggers API call.
+    
+    This endpoint initiates a CodeRabbit code analysis request. It validates
+    parameters, creates a database entry with pending status, and starts
+    the analysis process in a background thread.
+    
+    Expected JSON payload:
+    {
+        "from_date": "2024-01-01",
+        "to_date": "2024-01-31"
+    }
+    
+    Returns:
+        JSON response with report ID and status
+    """
     import uuid
     import threading
     from services.coderabbit import generate_coderabbit_report, validate_report_parameters
@@ -1462,14 +1710,27 @@ def api_generate_social_post_from_report():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# =============================================================================
+# HEALTH CHECK AND DEPLOYMENT
+# =============================================================================
+
 @app.route("/health")
 def health_check():
-    """Health check endpoint"""
+    """
+    Health check endpoint for monitoring and load balancers.
+    
+    Returns:
+        JSON response with service status and version information
+    """
     return jsonify({
         "status": "healthy",
         "service": "source2social",
         "version": "1.0.0"
     })
+
+# =============================================================================
+# APPLICATION STARTUP
+# =============================================================================
 
 # For Vercel deployment
 if __name__ == "__main__":
