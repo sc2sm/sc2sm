@@ -13,7 +13,8 @@
       "Bash(python:*)",
       "Bash(pip install:*)",
       "Bash(PORT=5001 python:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(echo $CODERABBIT_API_KEY)"
     ],
     "deny": [],
     "ask": []

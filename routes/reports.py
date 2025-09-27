@@ -4,7 +4,6 @@ Report-related routes for CodeRabbit API
 
 from datetime import datetime
 from flask import Blueprint, request, jsonify
-from services.coderabbit import generate_coderabbit_report, validate_report_parameters
 from database.db import (
     init_database, save_report_to_db, get_report_by_id, list_reports,
     get_report_metrics, parse_and_store_metrics, get_db_connection
@@ -33,6 +32,8 @@ def generate_report():
         "orgId": "string"                        # optional: Organization ID
     }
     """
+    from services.coderabbit import generate_coderabbit_report, validate_report_parameters
+
     data = request.get_json()
     if not data:
         return jsonify({"error": "JSON payload is required"}), 400

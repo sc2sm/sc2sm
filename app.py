@@ -948,18 +948,35 @@ def api_coderabbit_latest_report():
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT report_data FROM reports
-            WHERE status = 'completed' AND report_data IS NOT NULL
+            SELECT report_data, status, error_message, organization, date_range FROM reports
             ORDER BY created_at DESC LIMIT 1
         ''')
 
         row = cursor.fetchone()
         conn.close()
 
-        if row and row[0]:
-            import json
-            report_data = json.loads(row[0])
-            return jsonify({"data": report_data})
+        if row:
+            report_data, status, error_message, organization, date_range = row
+
+            if status == 'completed' and report_data:
+                import json
+                parsed_data = json.loads(report_data)
+                return jsonify({"data": parsed_data, "status": status})
+            elif status == 'failed':
+                return jsonify({
+                    "data": None,
+                    "status": status,
+                    "error": error_message,
+                    "organization": organization,
+                    "date_range": date_range
+                })
+            else:
+                return jsonify({
+                    "data": None,
+                    "status": status,
+                    "organization": organization,
+                    "date_range": date_range
+                })
         else:
             return jsonify({"data": None, "message": "No reports found"}), 404
 
