@@ -610,7 +610,17 @@ async function generateAndPostTweet() {
                         alert('Tweet posted successfully!');
                     } else {
                         button.innerHTML = '❌ Post Failed';
-                        alert('Failed to post tweet: ' + (postResult.error || 'Unknown error'));
+
+                        if (postResult.oauth_url) {
+                            const shouldAuthorize = confirm(
+                                `${postResult.error}\n\n${postResult.instructions}\n\nWould you like to authorize Twitter now?`
+                            );
+                            if (shouldAuthorize) {
+                                window.open(postResult.oauth_url, '_blank');
+                            }
+                        } else {
+                            alert('Failed to post tweet: ' + (postResult.error || 'Unknown error'));
+                        }
                     }
 
                     setTimeout(() => {

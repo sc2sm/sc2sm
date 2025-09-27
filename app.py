@@ -622,52 +622,111 @@ Generate a single tweet:"""
 
 class TwitterPoster:
     def __init__(self):
-        print("Initializing TwitterPoster...")
+        print("Initializing TwitterPoster with hardcoded Twitter API v1.1 credentials...")
         print(f"tweepy available: {tweepy is not None}")
-        print(f"TWITTER_API_KEY set: {bool(TWITTER_API_KEY and TWITTER_API_KEY != 'your_twitter_api_key_here')}")
-        print(f"TWITTER_API_SECRET set: {bool(TWITTER_API_SECRET and TWITTER_API_SECRET != 'your_twitter_api_secret_here')}")
-        print(f"TWITTER_ACCESS_TOKEN set: {bool(TWITTER_ACCESS_TOKEN and TWITTER_ACCESS_TOKEN != 'your_twitter_access_token_here')}")
-        print(f"TWITTER_ACCESS_TOKEN_SECRET set: {bool(TWITTER_ACCESS_TOKEN_SECRET and TWITTER_ACCESS_TOKEN_SECRET != 'your_twitter_access_token_secret_here')}")
 
-        if tweepy and all([TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET]):
-            try:
-                # Try the newer tweepy v2 Client initialization
-                self.client = tweepy.Client(
-                    consumer_key=TWITTER_API_KEY,
-                    consumer_secret=TWITTER_API_SECRET,
-                    access_token=TWITTER_ACCESS_TOKEN,
-                    access_token_secret=TWITTER_ACCESS_TOKEN_SECRET,
-                    wait_on_rate_limit=True
-                )
+        self.client = None
+        self.api = None
 
-                # Test the connection by getting user info
-                try:
-                    me = self.client.get_me()
-                    print(f"Twitter client initialized successfully! Connected as: @{me.data.username}")
-                except Exception as test_e:
-                    print(f"Twitter client created but authentication failed: {test_e}")
-                    # Still keep the client, might work for posting
-
-            except Exception as e:
-                print(f"Failed to initialize Twitter client: {e}")
+        if tweepy and TWITTER_API_KEY and TWITTER_API_SECRET and TWITTER_ACCESS_TOKEN and TWITTER_ACCESS_TOKEN_SECRET:
+            # Check for obvious credential issues
+            if TWITTER_ACCESS_TOKEN == TWITTER_ACCESS_TOKEN_SECRET:
+                print("❌ Twitter credential error: ACCESS_TOKEN and ACCESS_TOKEN_SECRET are identical")
+                print("   This indicates invalid credentials. Please check your .env file.")
                 self.client = None
+                self.api = None
+                return
+
+            try:
+                print("Using hardcoded Twitter API v1.1 credentials for authentication...")
+                print(f"API Key length: {len(TWITTER_API_KEY)}")
+                print(f"API Secret length: {len(TWITTER_API_SECRET)}")
+                print(f"Access Token format: {TWITTER_ACCESS_TOKEN[:10]}...{TWITTER_ACCESS_TOKEN[-10:]}")
+                print(f"Access Token Secret length: {len(TWITTER_ACCESS_TOKEN_SECRET)}")
+
+                # Set up v1.1 authentication
+                auth = tweepy.OAuthHandler(TWITTER_API_KEY, TWITTER_API_SECRET)
+                auth.set_access_token(TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET)
+
+                # Create API v1.1 instance (for posting tweets)
+                self.api = tweepy.API(auth, wait_on_rate_limit=True)
+
+                # Test the connection with more detailed error info
+                print("Testing Twitter API v1.1 connection...")
+                user = self.api.verify_credentials()
+                print(f"✅ Twitter API v1.1 authentication successful! Connected as: @{user.screen_name}")
+
+                # Also create v2 client if possible (for modern features)
+                try:
+                    self.client = tweepy.Client(
+                        consumer_key=TWITTER_API_KEY,
+                        consumer_secret=TWITTER_API_SECRET,
+                        access_token=TWITTER_ACCESS_TOKEN,
+                        access_token_secret=TWITTER_ACCESS_TOKEN_SECRET,
+                        wait_on_rate_limit=True
+                    )
+                    print("✅ Twitter API v2 client also initialized successfully")
+                except Exception as e:
+                    print(f"Note: Twitter API v2 client failed: {e}")
+
+            except tweepy.TweepyException as e:
+                print(f"❌ Twitter authentication failed (TweepyException): {e}")
+                if hasattr(e, 'response') and e.response:
+                    print(f"   HTTP Status: {e.response.status_code}")
+                    print(f"   Response: {e.response.text}")
+                self.client = None
+                self.api = None
+            except Exception as e:
+                print(f"❌ Twitter authentication failed (General Exception): {e}")
+                print("   Common causes:")
+                print("   1. Invalid or expired credentials")
+                print("   2. Incorrect access token/secret pair")
+                print("   3. App permissions not set to 'Read and Write'")
+                print("   4. Account suspended or restricted")
+                self.client = None
+                self.api = None
         else:
-            print("Twitter client not initialized - missing dependencies or credentials")
-            self.client = None
+            print("❌ Missing Twitter API credentials in environment variables:")
+            print(f"   TWITTER_API_KEY: {'✅' if TWITTER_API_KEY else '❌'}")
+            print(f"   TWITTER_API_SECRET: {'✅' if TWITTER_API_SECRET else '❌'}")
+            print(f"   TWITTER_ACCESS_TOKEN: {'✅' if TWITTER_ACCESS_TOKEN else '❌'}")
+            print(f"   TWITTER_ACCESS_TOKEN_SECRET: {'✅' if TWITTER_ACCESS_TOKEN_SECRET else '❌'}")
 
     def post_tweet(self, content: str) -> bool:
         """Post a tweet and return success status"""
-        if not self.client:
-            print("Twitter client not configured - missing API credentials")
+        if not self.client and not self.api:
+            print("Twitter API not configured - missing API credentials")
             return False
 
         try:
             print(f"Attempting to post tweet: {content[:50]}...")
-            response = self.client.create_tweet(text=content)
-            print(f"Tweet posted successfully! Tweet ID: {response.data['id'] if response.data else 'Unknown'}")
-            return True
+
+            # Try v2 API first (required for basic access level)
+            if self.client:
+                try:
+                    print("Using v2 API for posting...")
+                    response = self.client.create_tweet(text=content)
+                    tweet_id = response.data['id'] if response.data else 'Unknown'
+                    print(f"✅ Tweet posted via v2 API! Tweet ID: {tweet_id}")
+                    return True
+                except Exception as e2:
+                    print(f"❌ v2 API failed: {e2}")
+
+            # Fallback to v1.1 API if v2 fails and available
+            if self.api:
+                try:
+                    print("Trying v1.1 API as fallback...")
+                    status = self.api.update_status(content)
+                    print(f"✅ Tweet posted successfully! Tweet ID: {status.id}")
+                    print(f"Tweet URL: https://twitter.com/{status.user.screen_name}/status/{status.id}")
+                    return True
+                except Exception as e:
+                    print(f"❌ v1.1 API fallback also failed: {e}")
+
+            return False
+
         except Exception as e:
-            print(f"Failed to post tweet: {type(e).__name__}: {e}")
+            print(f"❌ Failed to post tweet: {type(e).__name__}: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -1181,19 +1240,31 @@ def api_post_tweet():
 
         tweet_content = data['tweet_content']
 
+        # Check if Twitter API is available
+        if not twitter_poster.client and not twitter_poster.api:
+            return jsonify({
+                "posted": False,
+                "error": "Twitter API not configured. Check your credentials in .env file.",
+                "details": "TWITTER_ACCESS_TOKEN and TWITTER_ACCESS_TOKEN_SECRET may be invalid or expired"
+            }), 400
+
         # Post tweet using TwitterPoster
+        print(f"Attempting to post tweet via API: {tweet_content[:50]}...")
         success = twitter_poster.post_tweet(tweet_content)
 
         if success:
+            print("✅ Tweet posted successfully via API endpoint")
             return jsonify({
                 "posted": True,
                 "tweet_content": tweet_content,
                 "message": "Tweet posted successfully"
             })
         else:
+            print("❌ Tweet posting failed via API endpoint")
             return jsonify({
                 "posted": False,
-                "error": "Failed to post tweet. Check Twitter API configuration."
+                "error": "Failed to post tweet. Twitter API returned an error.",
+                "details": "Check server logs for specific error details. Credentials may be invalid or expired."
             }), 500
 
     except Exception as e:
