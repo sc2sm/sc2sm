@@ -583,12 +583,14 @@ Report Content:
 Guidelines:
 - Write in first person ("I" or "we")
 - Make it engaging and share insights about the development work
-- Keep it under 280 characters for Twitter
+- CRITICAL: Must be EXACTLY 280 characters or less for Twitter - count carefully
 - Focus on key takeaways, metrics, or interesting findings
 - Add personality - make it feel human and authentic
 - If no activity was found, frame it positively (planning phase, reflection time, etc.)
 - No hashtags unless they feel organic
 - End with a question or insight that encourages engagement
+
+IMPORTANT: The tweet MUST be 280 characters or fewer. Count the characters and trim if necessary.
 
 Generate a single tweet:"""
 
@@ -597,28 +599,44 @@ Generate a single tweet:"""
                 response = openai_client.chat.completions.create(
                     model="gpt-4",
                     messages=[
-                        {"role": "system", "content": "You are an expert at writing engaging technical social media posts for developers building in public."},
+                        {"role": "system", "content": "You are an expert at writing engaging technical social media posts for developers building in public. Always ensure tweets are exactly 280 characters or less."},
                         {"role": "user", "content": prompt}
                     ],
                     max_tokens=100,
                     temperature=0.8
                 )
 
-                return response.choices[0].message.content.strip()
+                tweet = response.choices[0].message.content.strip()
+
+                # Ensure tweet is exactly 280 characters or less
+                if len(tweet) > 280:
+                    tweet = tweet[:277] + "..."
+
+                return tweet
             else:
                 # Fallback if OpenAI is not configured
                 if "No pull request activity" in report_content:
-                    return "Taking some time to plan and reflect on the codebase this week. Sometimes the best development happens between the commits 🤔\n\nWhat's your approach to planning vs. coding time?"
+                    fallback = "Taking some time to plan and reflect on the codebase this week. Sometimes the best development happens between the commits 🤔\n\nWhat's your approach to planning vs. coding time?"
                 else:
-                    return f"Just reviewed our recent development work with CodeRabbit AI. Great insights into our code quality and team patterns! 🚀\n\nWhat tools do you use for code analysis?"
+                    fallback = f"Just reviewed our recent development work with CodeRabbit AI. Great insights into our code quality and team patterns! 🚀\n\nWhat tools do you use for code analysis?"
+
+                # Ensure fallback is under 280 characters
+                if len(fallback) > 280:
+                    fallback = fallback[:277] + "..."
+                return fallback
 
         except Exception as e:
             # Fallback to simple template if OpenAI fails
             print(f"OpenAI API error: {e}")
             if "No pull request activity" in report_content:
-                return "Taking some time to plan and reflect on the codebase this week. Sometimes the best development happens between the commits 🤔"
+                fallback = "Taking some time to plan and reflect on the codebase this week. Sometimes the best development happens between the commits 🤔"
             else:
-                return "Just reviewed our development work with AI-powered code analysis. Always learning something new from these insights! 🚀"
+                fallback = "Just reviewed our development work with AI-powered code analysis. Always learning something new from these insights! 🚀"
+
+            # Ensure fallback is under 280 characters
+            if len(fallback) > 280:
+                fallback = fallback[:277] + "..."
+            return fallback
 
 class TwitterPoster:
     def __init__(self):

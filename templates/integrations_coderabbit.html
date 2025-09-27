@@ -73,6 +73,31 @@
     </div>
 </div>
 
+<!-- Tweet Preview Modal -->
+<div id="tweet-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🐦 Tweet Preview</h3>
+            <span class="close" onclick="closeTweetModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p>Here's your generated tweet:</p>
+            <div class="tweet-preview" id="tweet-preview-content">
+                <!-- Tweet content will be inserted here -->
+            </div>
+            <div class="character-count">
+                <span id="char-count">0</span> / 280 characters
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeTweetModal()">Cancel</button>
+            <button class="btn" onclick="postTweet()" id="post-tweet-btn">
+                🐦 Post to Twitter
+            </button>
+        </div>
+    </div>
+</div>
+
 <style>
 input[type="text"], input[type="date"], textarea {
     width: 100%;
@@ -217,6 +242,109 @@ h3 {
 .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    overflow-y: auto;
+}
+
+.modal-content {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    margin: 10% auto;
+    padding: 0;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #1f2937;
+}
+
+.close {
+    color: #6c757d;
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.close:hover {
+    color: #dc3545;
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.tweet-preview {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    min-height: 60px;
+}
+
+.character-count {
+    text-align: right;
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+.character-count.over-limit {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.modal-footer {
+    padding: 1.5rem;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
 }
 </style>
 
@@ -586,50 +714,12 @@ async function generateAndPostTweet() {
             } else {
                 button.innerHTML = '📝 Tweet Generated';
 
-                // Show the generated tweet and ask if user wants to post it
-                const shouldPost = confirm(`Generated tweet:\n\n"${result.tweet_content}"\n\nDo you want to post this tweet?`);
+                // Show the generated tweet in modal
+                showTweetModal(result.tweet_content);
 
-                if (shouldPost) {
-                    // Call the post endpoint to get Twitter URL
-                    button.innerHTML = '🔄 Opening Twitter...';
-
-                    const postResponse = await fetch('/api/reports/post-tweet', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            tweet_content: result.tweet_content
-                        })
-                    });
-
-                    const postResult = await postResponse.json();
-
-                    if (postResponse.ok && postResult.twitter_url) {
-                        button.innerHTML = '🐦 Opening Twitter...';
-
-                        // Open Twitter compose window
-                        window.open(postResult.twitter_url, '_blank');
-
-                        button.innerHTML = '✅ Opened Twitter!';
-
-                        setTimeout(() => {
-                            button.innerHTML = originalContent;
-                            button.disabled = false;
-                        }, 2000);
-                    } else {
-                        button.innerHTML = '❌ Failed';
-                        alert('Failed to generate Twitter link: ' + (postResult.error || 'Unknown error'));
-
-                        setTimeout(() => {
-                            button.innerHTML = originalContent;
-                            button.disabled = false;
-                        }, 3000);
-                    }
-                } else {
-                    button.innerHTML = originalContent;
-                    button.disabled = false;
-                }
+                // Reset button
+                button.innerHTML = originalContent;
+                button.disabled = false;
             }
         } else {
             throw new Error(result.error || 'Failed to generate tweet');
@@ -828,6 +918,101 @@ function resetToCurrentDates() {
     // Force browser to recognize the change
     document.getElementById('to-date').dispatchEvent(new Event('change'));
     document.getElementById('from-date').dispatchEvent(new Event('change'));
+}
+
+// Modal functions
+let currentTweetContent = '';
+
+function showTweetModal(tweetContent) {
+    currentTweetContent = tweetContent;
+    document.getElementById('tweet-preview-content').textContent = tweetContent;
+
+    // Update character count
+    const charCount = tweetContent.length;
+    const charCountElement = document.getElementById('char-count');
+    charCountElement.textContent = charCount;
+
+    // Color code the character count
+    const charCountContainer = document.querySelector('.character-count');
+    if (charCount > 280) {
+        charCountContainer.classList.add('over-limit');
+    } else {
+        charCountContainer.classList.remove('over-limit');
+    }
+
+    // Scroll to top of page
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Show modal
+    document.getElementById('tweet-modal').style.display = 'block';
+}
+
+function closeTweetModal() {
+    document.getElementById('tweet-modal').style.display = 'none';
+    currentTweetContent = '';
+}
+
+async function postTweet() {
+    const button = document.getElementById('post-tweet-btn');
+    const originalContent = button.innerHTML;
+
+    try {
+        button.innerHTML = '🔄 Opening Twitter...';
+        button.disabled = true;
+
+        const response = await fetch('/api/reports/post-tweet', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                tweet_content: currentTweetContent
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.twitter_url) {
+            button.innerHTML = '🐦 Opening Twitter...';
+
+            // Open Twitter compose window
+            window.open(result.twitter_url, '_blank');
+
+            button.innerHTML = '✅ Opened Twitter!';
+
+            // Close modal after a short delay
+            setTimeout(() => {
+                closeTweetModal();
+                button.innerHTML = originalContent;
+                button.disabled = false;
+            }, 1500);
+        } else {
+            button.innerHTML = '❌ Failed';
+            alert('Failed to generate Twitter link: ' + (result.error || 'Unknown error'));
+
+            setTimeout(() => {
+                button.innerHTML = originalContent;
+                button.disabled = false;
+            }, 3000);
+        }
+    } catch (error) {
+        console.error('Error posting tweet:', error);
+        button.innerHTML = '❌ Error';
+        alert('Error: ' + error.message);
+
+        setTimeout(() => {
+            button.innerHTML = originalContent;
+            button.disabled = false;
+        }, 3000);
+    }
+}
+
+// Close modal when clicking outside of it
+window.onclick = function(event) {
+    const modal = document.getElementById('tweet-modal');
+    if (event.target === modal) {
+        closeTweetModal();
+    }
 }
 </script>
 {% endblock %}
