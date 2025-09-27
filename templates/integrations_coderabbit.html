@@ -590,8 +590,8 @@ async function generateAndPostTweet() {
                 const shouldPost = confirm(`Generated tweet:\n\n"${result.tweet_content}"\n\nDo you want to post this tweet?`);
 
                 if (shouldPost) {
-                    // Call the post endpoint
-                    button.innerHTML = '🔄 Posting Tweet...';
+                    // Call the post endpoint to get Twitter URL
+                    button.innerHTML = '🔄 Opening Twitter...';
 
                     const postResponse = await fetch('/api/reports/post-tweet', {
                         method: 'POST',
@@ -605,28 +605,27 @@ async function generateAndPostTweet() {
 
                     const postResult = await postResponse.json();
 
-                    if (postResponse.ok && postResult.posted) {
-                        button.innerHTML = '✅ Tweet Posted!';
-                        alert('Tweet posted successfully!');
+                    if (postResponse.ok && postResult.twitter_url) {
+                        button.innerHTML = '🐦 Opening Twitter...';
+
+                        // Open Twitter compose window
+                        window.open(postResult.twitter_url, '_blank');
+
+                        button.innerHTML = '✅ Opened Twitter!';
+
+                        setTimeout(() => {
+                            button.innerHTML = originalContent;
+                            button.disabled = false;
+                        }, 2000);
                     } else {
-                        button.innerHTML = '❌ Post Failed';
+                        button.innerHTML = '❌ Failed';
+                        alert('Failed to generate Twitter link: ' + (postResult.error || 'Unknown error'));
 
-                        if (postResult.oauth_url) {
-                            const shouldAuthorize = confirm(
-                                `${postResult.error}\n\n${postResult.instructions}\n\nWould you like to authorize Twitter now?`
-                            );
-                            if (shouldAuthorize) {
-                                window.open(postResult.oauth_url, '_blank');
-                            }
-                        } else {
-                            alert('Failed to post tweet: ' + (postResult.error || 'Unknown error'));
-                        }
+                        setTimeout(() => {
+                            button.innerHTML = originalContent;
+                            button.disabled = false;
+                        }, 3000);
                     }
-
-                    setTimeout(() => {
-                        button.innerHTML = originalContent;
-                        button.disabled = false;
-                    }, 3000);
                 } else {
                     button.innerHTML = originalContent;
                     button.disabled = false;

@@ -1000,42 +1000,23 @@ def api_coderabbit_save_report():
 def api_coderabbit_latest_report():
     """Get the most recent CodeRabbit report from database"""
     try:
-        # Use the same database as reports routes
-        from database.db import get_db_connection
-
-        conn = get_db_connection()
+        # Use the reports database
+        conn = sqlite3.connect('/Users/edwardzhong/Projects/sc2sm/reports.db')
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT report_data, status, error_message, organization, date_range FROM reports
+            SELECT report_data FROM reports
+            WHERE status = 'completed' AND report_data IS NOT NULL
             ORDER BY created_at DESC LIMIT 1
         ''')
 
         row = cursor.fetchone()
         conn.close()
 
-        if row:
-            report_data, status, error_message, organization, date_range = row
-
-            if status == 'completed' and report_data:
-                import json
-                parsed_data = json.loads(report_data)
-                return jsonify({"data": parsed_data, "status": status})
-            elif status == 'failed':
-                return jsonify({
-                    "data": None,
-                    "status": status,
-                    "error": error_message,
-                    "organization": organization,
-                    "date_range": date_range
-                })
-            else:
-                return jsonify({
-                    "data": None,
-                    "status": status,
-                    "organization": organization,
-                    "date_range": date_range
-                })
+        if row and row[0]:
+            import json
+            report_data = json.loads(row[0])
+            return jsonify({"data": report_data})
         else:
             return jsonify({"data": None, "message": "No reports found"}), 404
 
@@ -1221,8 +1202,13 @@ def api_generate_tweet_from_report():
         # Generate tweet using the PostGenerator
         tweet_content = post_generator.generate_tweet_from_report(report_data)
 
+        # Create Twitter compose URL
+        import urllib.parse
+        twitter_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(tweet_content)}"
+
         return jsonify({
             "tweet_content": tweet_content,
+            "twitter_url": twitter_url,
             "posted": False,  # Just generated, not posted yet
             "message": "Tweet generated successfully"
         })
@@ -1232,7 +1218,7 @@ def api_generate_tweet_from_report():
 
 @app.route("/api/reports/post-tweet", methods=["POST"])
 def api_post_tweet():
-    """Post a tweet using the Twitter API"""
+    """Generate Twitter compose URL for manual posting"""
     try:
         data = request.json
         if not data or 'tweet_content' not in data:
@@ -1240,32 +1226,18 @@ def api_post_tweet():
 
         tweet_content = data['tweet_content']
 
-        # Check if Twitter API is available
-        if not twitter_poster.client and not twitter_poster.api:
-            return jsonify({
-                "posted": False,
-                "error": "Twitter API not configured. Check your credentials in .env file.",
-                "details": "TWITTER_ACCESS_TOKEN and TWITTER_ACCESS_TOKEN_SECRET may be invalid or expired"
-            }), 400
+        # Create Twitter compose URL
+        import urllib.parse
+        twitter_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(tweet_content)}"
 
-        # Post tweet using TwitterPoster
-        print(f"Attempting to post tweet via API: {tweet_content[:50]}...")
-        success = twitter_poster.post_tweet(tweet_content)
+        print(f"Generated Twitter compose URL for: {tweet_content[:50]}...")
 
-        if success:
-            print("✅ Tweet posted successfully via API endpoint")
-            return jsonify({
-                "posted": True,
-                "tweet_content": tweet_content,
-                "message": "Tweet posted successfully"
-            })
-        else:
-            print("❌ Tweet posting failed via API endpoint")
-            return jsonify({
-                "posted": False,
-                "error": "Failed to post tweet. Twitter API returned an error.",
-                "details": "Check server logs for specific error details. Credentials may be invalid or expired."
-            }), 500
+        return jsonify({
+            "posted": False,
+            "tweet_content": tweet_content,
+            "twitter_url": twitter_url,
+            "message": "Click the link to post on Twitter"
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
