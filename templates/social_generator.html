@@ -1,0 +1,542 @@
+{% extends "base.html" %}
+
+{% block page_title %}Social Media Generator{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>📱 Social Media Generator</h2>
+    <p>Generate and create posts for LinkedIn, Facebook, Instagram, and other social platforms from your latest CodeRabbit analysis.</p>
+
+    <div class="platform-selector" style="margin-bottom: 1.5rem;">
+        <label for="platform-select">Choose Platform:</label>
+        <select id="platform-select" onchange="updatePlatformUI()">
+            <option value="linkedin">LinkedIn</option>
+            <option value="facebook">Facebook</option>
+            <option value="instagram">Instagram</option>
+            <option value="threads">Threads</option>
+            <option value="mastodon">Mastodon</option>
+        </select>
+    </div>
+
+    <div class="actions" style="margin-top: 1.5rem;">
+        <button class="btn" onclick="generateSocialPostFromLatestReport()" id="generate-social-btn">
+            📱 Generate <span id="platform-name">LinkedIn</span> Post
+        </button>
+        <button class="btn btn-secondary" onclick="showCustomSocialModal()">
+            ✏️ Create Custom Post
+        </button>
+    </div>
+</div>
+
+<div id="social-results" style="display: none;">
+    <div class="card">
+        <h2>Generated <span id="result-platform-name">LinkedIn</span> Post</h2>
+        <div id="social-content">
+            <!-- Generated post will be displayed here -->
+        </div>
+    </div>
+</div>
+
+<!-- Social Post Preview Modal -->
+<div id="social-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>📱 <span id="modal-platform-name">LinkedIn</span> Post Preview</h3>
+            <span class="close" onclick="closeSocialModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p>Here's your generated post:</p>
+            <div class="social-preview" id="social-preview-content">
+                <!-- Post content will be inserted here -->
+            </div>
+            <div class="character-count">
+                <span id="social-char-count">0</span> / <span id="char-limit">3000</span> characters
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeSocialModal()">Cancel</button>
+            <button class="btn" onclick="copyToClipboard()" id="copy-post-btn">
+                📋 Copy Post
+            </button>
+            <button class="btn btn-secondary" onclick="openPlatformCompose()" id="open-platform-btn">
+                📱 Open <span id="compose-platform-name">LinkedIn</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Custom Social Post Modal -->
+<div id="custom-social-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>✏️ Create Custom <span id="custom-modal-platform-name">LinkedIn</span> Post</h3>
+            <span class="close" onclick="closeCustomSocialModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="custom-social-text">Post Content</label>
+                <textarea id="custom-social-text" placeholder="What's on your mind?" maxlength="3000" data-char-limit="3000"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeCustomSocialModal()">Cancel</button>
+            <button class="btn" onclick="copyCustomPost()" id="copy-custom-post-btn">
+                📋 Copy Post
+            </button>
+            <button class="btn btn-secondary" onclick="openCustomPlatformCompose()" id="open-custom-platform-btn">
+                📱 Open <span id="custom-compose-platform-name">LinkedIn</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+input[type="text"], input[type="date"], textarea, select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: inherit;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+}
+
+.platform-selector {
+    margin-bottom: 1rem;
+}
+
+.platform-selector label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.platform-selector select {
+    max-width: 200px;
+}
+
+h2 {
+    margin-bottom: 0.5rem;
+    color: #1f2937;
+}
+
+h3 {
+    margin: 0;
+    color: #374151;
+}
+
+.loading {
+    display: inline-flex;
+    align-items: center;
+}
+
+.loading::after {
+    content: '';
+    width: 1rem;
+    height: 1rem;
+    margin-left: 0.5rem;
+    border: 2px solid transparent;
+    border-top: 2px solid #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.social-preview {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    min-height: 100px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.character-count {
+    text-align: right;
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+.character-count.over-limit {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.character-count.warning {
+    color: #f39c12;
+    font-weight: bold;
+}
+
+/* Platform-specific styling */
+.linkedin-preview {
+    border-left: 4px solid #0077b5;
+}
+
+.facebook-preview {
+    border-left: 4px solid #1877f2;
+}
+
+.instagram-preview {
+    border-left: 4px solid #e4405f;
+}
+
+.threads-preview {
+    border-left: 4px solid #000000;
+}
+
+.mastodon-preview {
+    border-left: 4px solid #6364ff;
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    overflow-y: auto;
+}
+
+.modal-content {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    margin: 5% auto;
+    padding: 0;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #1f2937;
+}
+
+.close {
+    color: #6c757d;
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.close:hover {
+    color: #dc3545;
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    padding: 1.5rem;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.platform-info {
+    background: rgba(102, 126, 234, 0.1);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    border-left: 4px solid #667eea;
+}
+
+.platform-info h4 {
+    margin: 0 0 0.5rem 0;
+    color: #374151;
+}
+
+.platform-info p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+</style>
+
+<script>
+let currentSocialContent = '';
+let currentPlatform = 'linkedin';
+
+const platformConfig = {
+    linkedin: {
+        name: 'LinkedIn',
+        charLimit: 3000,
+        composeUrl: 'https://www.linkedin.com/feed/',
+        description: 'Professional networking platform - great for sharing technical insights and career updates'
+    },
+    facebook: {
+        name: 'Facebook',
+        charLimit: 63206,
+        composeUrl: 'https://www.facebook.com/',
+        description: 'Social networking platform - perfect for sharing updates with friends and family'
+    },
+    instagram: {
+        name: 'Instagram',
+        charLimit: 2200,
+        composeUrl: 'https://www.instagram.com/',
+        description: 'Visual platform - ideal for sharing behind-the-scenes content and stories'
+    },
+    threads: {
+        name: 'Threads',
+        charLimit: 500,
+        composeUrl: 'https://www.threads.net/',
+        description: 'Meta\'s text-based platform - great for quick updates and conversations'
+    },
+    mastodon: {
+        name: 'Mastodon',
+        charLimit: 500,
+        composeUrl: 'https://mastodon.social/',
+        description: 'Decentralized social network - perfect for open-source and tech communities'
+    }
+};
+
+function updatePlatformUI() {
+    const platformSelect = document.getElementById('platform-select');
+    currentPlatform = platformSelect.value;
+    const config = platformConfig[currentPlatform];
+    
+    // Update button text
+    document.getElementById('platform-name').textContent = config.name;
+    document.getElementById('result-platform-name').textContent = config.name;
+    document.getElementById('modal-platform-name').textContent = config.name;
+    document.getElementById('compose-platform-name').textContent = config.name;
+    document.getElementById('custom-modal-platform-name').textContent = config.name;
+    document.getElementById('custom-compose-platform-name').textContent = config.name;
+    
+    // Update character limits
+    document.getElementById('char-limit').textContent = config.charLimit;
+    document.getElementById('custom-social-text').maxLength = config.charLimit;
+    document.getElementById('custom-social-text').dataset.charLimit = config.charLimit;
+}
+
+async function generateSocialPostFromLatestReport() {
+    const button = document.getElementById('generate-social-btn');
+    const originalContent = button.innerHTML;
+
+    try {
+        // Show loading state
+        button.innerHTML = '🔄 Generating Post...';
+        button.disabled = true;
+
+        // First, get the latest report data
+        const reportResponse = await fetch('/api/coderabbit/reports/latest');
+        if (!reportResponse.ok) {
+            throw new Error('No reports available. Please generate a CodeRabbit report first.');
+        }
+
+        const reportData = await reportResponse.json();
+        if (!reportData.data) {
+            throw new Error('No report data available. Please generate a CodeRabbit report first.');
+        }
+
+        // Generate social media post from the report
+        const socialResponse = await fetch('/api/reports/generate-social-post', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                report_data: reportData.data,
+                platform: currentPlatform
+            })
+        });
+
+        const result = await socialResponse.json();
+
+        if (socialResponse.ok) {
+            button.innerHTML = '✅ Post Generated!';
+            
+            // Show the generated post in modal
+            showSocialModal(result.post_content);
+
+            // Reset button after delay
+            setTimeout(() => {
+                button.innerHTML = originalContent;
+                button.disabled = false;
+            }, 2000);
+        } else {
+            throw new Error(result.error || 'Failed to generate post');
+        }
+
+    } catch (error) {
+        console.error('Social post generation error:', error);
+        button.innerHTML = '❌ Generation Failed';
+        alert('Failed to generate post: ' + error.message);
+
+        setTimeout(() => {
+            button.innerHTML = originalContent;
+            button.disabled = false;
+        }, 3000);
+    }
+}
+
+function showSocialModal(postContent) {
+    currentSocialContent = postContent;
+    const previewElement = document.getElementById('social-preview-content');
+    previewElement.textContent = postContent;
+    
+    // Add platform-specific styling
+    previewElement.className = `social-preview ${currentPlatform}-preview`;
+
+    // Update character count
+    const charCount = postContent.length;
+    const charCountElement = document.getElementById('social-char-count');
+    charCountElement.textContent = charCount;
+
+    // Color code the character count
+    const charCountContainer = document.querySelector('.character-count');
+    const config = platformConfig[currentPlatform];
+    
+    if (charCount > config.charLimit) {
+        charCountContainer.classList.add('over-limit');
+    } else if (charCount > config.charLimit * 0.9) {
+        charCountContainer.classList.add('warning');
+    } else {
+        charCountContainer.classList.remove('over-limit', 'warning');
+    }
+
+    // Scroll to top of page
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Show modal
+    document.getElementById('social-modal').style.display = 'block';
+}
+
+function closeSocialModal() {
+    document.getElementById('social-modal').style.display = 'none';
+    currentSocialContent = '';
+}
+
+function showCustomSocialModal() {
+    document.getElementById('custom-social-modal').style.display = 'block';
+    document.getElementById('custom-social-text').focus();
+}
+
+function closeCustomSocialModal() {
+    document.getElementById('custom-social-modal').style.display = 'none';
+    document.getElementById('custom-social-text').value = '';
+}
+
+function copyToClipboard() {
+    if (currentSocialContent) {
+        navigator.clipboard.writeText(currentSocialContent).then(() => {
+            const button = document.getElementById('copy-post-btn');
+            const originalText = button.innerHTML;
+            button.innerHTML = '✅ Copied!';
+            setTimeout(() => {
+                button.innerHTML = originalText;
+            }, 2000);
+        }).catch(() => {
+            alert('Failed to copy to clipboard');
+        });
+    }
+}
+
+function copyCustomPost() {
+    const customText = document.getElementById('custom-social-text').value.trim();
+    if (customText) {
+        navigator.clipboard.writeText(customText).then(() => {
+            const button = document.getElementById('copy-custom-post-btn');
+            const originalText = button.innerHTML;
+            button.innerHTML = '✅ Copied!';
+            setTimeout(() => {
+                button.innerHTML = originalText;
+            }, 2000);
+        }).catch(() => {
+            alert('Failed to copy to clipboard');
+        });
+    } else {
+        alert('Please enter some content first.');
+    }
+}
+
+function openPlatformCompose() {
+    const config = platformConfig[currentPlatform];
+    window.open(config.composeUrl, '_blank');
+}
+
+function openCustomPlatformCompose() {
+    const config = platformConfig[currentPlatform];
+    window.open(config.composeUrl, '_blank');
+}
+
+// Close modals when clicking outside of them
+window.onclick = function(event) {
+    const socialModal = document.getElementById('social-modal');
+    const customSocialModal = document.getElementById('custom-social-modal');
+    
+    if (event.target === socialModal) {
+        closeSocialModal();
+    }
+    if (event.target === customSocialModal) {
+        closeCustomSocialModal();
+    }
+}
+
+// Handle Enter key in custom post textarea
+document.addEventListener('DOMContentLoaded', function() {
+    const customSocialText = document.getElementById('custom-social-text');
+    if (customSocialText) {
+        customSocialText.addEventListener('keydown', function(event) {
+            if (event.ctrlKey && event.key === 'Enter') {
+                copyCustomPost();
+            }
+        });
+    }
+    
+    // Initialize platform UI
+    updatePlatformUI();
+});
+</script>
+{% endblock %}

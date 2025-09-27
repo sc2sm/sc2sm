@@ -638,6 +638,150 @@ Generate a single tweet:"""
                 fallback = fallback[:277] + "..."
             return fallback
 
+    def generate_social_post_from_report(self, report_data: Dict, platform: str = 'linkedin') -> str:
+        """Generate a social media post from CodeRabbit report data for different platforms"""
+        
+        # Extract report content
+        report_content = ""
+        if report_data and report_data.get('result') and report_data['result'].get('data'):
+            reports = report_data['result']['data']
+            report_content = "\n\n".join([item.get('report', '') for item in reports if item.get('report')])
+
+        if not report_content or report_content.strip() == "":
+            report_content = "No pull request activity found in the analyzed period"
+
+        # Platform-specific configurations
+        platform_configs = {
+            'linkedin': {
+                'char_limit': 3000,
+                'tone': 'professional and insightful',
+                'style': 'LinkedIn-style professional post',
+                'guidelines': [
+                    'Write in first person ("I" or "we")',
+                    'Make it professional but engaging',
+                    'Focus on technical insights and career growth',
+                    'Include relevant metrics or achievements',
+                    'End with a professional question or call-to-action',
+                    'Use proper paragraph breaks for readability'
+                ]
+            },
+            'facebook': {
+                'char_limit': 63206,
+                'tone': 'casual and friendly',
+                'style': 'Facebook-style personal update',
+                'guidelines': [
+                    'Write in first person ("I" or "we")',
+                    'Make it casual and relatable',
+                    'Share personal insights about the work',
+                    'Include emojis sparingly',
+                    'End with a question to encourage comments',
+                    'Keep it conversational'
+                ]
+            },
+            'instagram': {
+                'char_limit': 2200,
+                'tone': 'visual and engaging',
+                'style': 'Instagram-style story post',
+                'guidelines': [
+                    'Write in first person ("I" or "we")',
+                    'Make it visually appealing with line breaks',
+                    'Use emojis strategically',
+                    'Focus on behind-the-scenes content',
+                    'Include relevant hashtags (3-5 max)',
+                    'End with engagement prompts'
+                ]
+            },
+            'threads': {
+                'char_limit': 500,
+                'tone': 'conversational and quick',
+                'style': 'Threads-style quick update',
+                'guidelines': [
+                    'Write in first person ("I" or "we")',
+                    'Keep it concise and conversational',
+                    'Focus on one key insight or update',
+                    'Use minimal emojis',
+                    'End with a quick question',
+                    'Make it feel like a quick thought'
+                ]
+            },
+            'mastodon': {
+                'char_limit': 500,
+                'tone': 'community-focused and open',
+                'style': 'Mastodon-style community post',
+                'guidelines': [
+                    'Write in first person ("I" or "we")',
+                    'Make it community-oriented',
+                    'Focus on open-source and tech community values',
+                    'Use minimal hashtags (1-2 max)',
+                    'End with a community question',
+                    'Keep it authentic and unfiltered'
+                ]
+            }
+        }
+
+        config = platform_configs.get(platform, platform_configs['linkedin'])
+        
+        # Create platform-specific prompt
+        prompt = f"""You are a tech professional building in public. Create an engaging {config['style']} from this CodeRabbit analysis report.
+
+Report Content:
+{report_content}
+
+Platform: {platform.title()}
+Character Limit: {config['char_limit']} characters
+Tone: {config['tone']}
+
+Guidelines:
+{chr(10).join(f"- {guideline}" for guideline in config['guidelines'])}
+
+IMPORTANT: The post MUST be {config['char_limit']} characters or fewer. Count the characters and trim if necessary.
+
+Generate a single {platform} post:"""
+
+        try:
+            if openai_client:
+                response = openai_client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[
+                        {"role": "system", "content": f"You are an expert at writing engaging {platform} posts for developers building in public. Always ensure posts are exactly {config['char_limit']} characters or less."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=200,
+                    temperature=0.8
+                )
+
+                post = response.choices[0].message.content.strip()
+
+                # Ensure post is within character limit
+                if len(post) > config['char_limit']:
+                    post = post[:config['char_limit']-3] + "..."
+
+                return post
+            else:
+                # Fallback if OpenAI is not configured
+                if "No pull request activity" in report_content:
+                    fallback = f"Taking some time to plan and reflect on the codebase this week. Sometimes the best development happens between the commits 🤔\n\nWhat's your approach to planning vs. coding time?"
+                else:
+                    fallback = f"Just reviewed our recent development work with CodeRabbit AI. Great insights into our code quality and team patterns! 🚀\n\nWhat tools do you use for code analysis?"
+
+                # Ensure fallback is under character limit
+                if len(fallback) > config['char_limit']:
+                    fallback = fallback[:config['char_limit']-3] + "..."
+                return fallback
+
+        except Exception as e:
+            # Fallback to simple template if OpenAI fails
+            print(f"OpenAI API error: {e}")
+            if "No pull request activity" in report_content:
+                fallback = f"Taking some time to plan and reflect on the codebase this week. Sometimes the best development happens between the commits 🤔"
+            else:
+                fallback = f"Just reviewed our development work with AI-powered code analysis. Always learning something new from these insights! 🚀"
+
+            # Ensure fallback is under character limit
+            if len(fallback) > config['char_limit']:
+                fallback = fallback[:config['char_limit']-3] + "..."
+            return fallback
+
 class TwitterPoster:
     def __init__(self):
         print("Initializing TwitterPoster with hardcoded Twitter API v1.1 credentials...")
@@ -927,6 +1071,16 @@ def settings_llm():
 def integrations_coderabbit():
     """Code Rabbit integration page"""
     return render_template("integrations_coderabbit.html")
+
+@app.route("/tweet-generator")
+def tweet_generator():
+    """Tweet generator page"""
+    return render_template("tweet_generator.html")
+
+@app.route("/social-generator")
+def social_generator():
+    """Social media generator page"""
+    return render_template("social_generator.html")
 
 @app.route("/api/coderabbit/analyze", methods=["POST"])
 def api_coderabbit_analyze():
@@ -1280,6 +1434,29 @@ def api_generate_and_post_tweet():
             "tweet_content": tweet_content,
             "posted": success,
             "message": "Tweet generated and posted successfully" if success else "Tweet generated but posting failed"
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/reports/generate-social-post", methods=["POST"])
+def api_generate_social_post_from_report():
+    """Generate a social media post from CodeRabbit report data for different platforms"""
+    try:
+        data = request.json
+        if not data or 'report_data' not in data:
+            return jsonify({"error": "report_data is required"}), 400
+
+        report_data = data['report_data']
+        platform = data.get('platform', 'linkedin')
+
+        # Generate social media post using the PostGenerator
+        post_content = post_generator.generate_social_post_from_report(report_data, platform)
+
+        return jsonify({
+            "post_content": post_content,
+            "platform": platform,
+            "message": f"{platform.title()} post generated successfully"
         })
 
     except Exception as e:
