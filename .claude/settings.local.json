@@ -13,7 +13,11 @@
       "Bash(python:*)",
       "Bash(pip install:*)",
       "Bash(PORT=5001 python:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(kill:*)",
+      "Bash(PORT=8000 python app.py)"
     ],
     "deny": [],
     "ask": []
